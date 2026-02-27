@@ -1,7 +1,8 @@
 {
   "name": "firefox-aidev-plugins",
   "owner": {
-    "name": "AI for Developers Reviewers (ai4dev)"
+    "name": "AI for Development",
+    "email": "ai4dev@mozilla.com"
   },
   "plugins": []
 }
