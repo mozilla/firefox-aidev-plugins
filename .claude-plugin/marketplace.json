@@ -4,5 +4,11 @@
     "name": "AI for Development",
     "email": "ai4dev@mozilla.com"
   },
-  "plugins": []
+  "plugins": [
+    {
+      "name": "Firefox Newtab",
+      "path": "plugins/newtab",
+      "description": "Skills and tools for Firefox Home/New Tab development"
+    }
+  ]
 }
