@@ -1,89 +1,61 @@
 # Train-hop: Update Locales
 
-Updates the en-US `newtab.ftl` and pulls the latest translations for all supported locales, then commits the result.
+Updates `newtab.ftl` and pulls the latest translations for all supported locales.
 
-## Important
+## Pre-condition
 
-Do not skip any steps. Complete each step fully before moving to the next.
+Working tree is clean on `main`.
 
 ## Steps
 
-### 1. Read current Nightly version
-
-Read `browser/config/version.txt` and extract the major version number (e.g. `147` from `147.0a1`). This will be used in the bug summary.
-
-### 2. Update locales
+### 1. Update locales
 
 ```bash
 ./mach newtab update-locales
 ```
 
-### 3. Review the locales report
+### 2. Review the locales report
 
 ```bash
 ./mach newtab locales-report
 ```
 
-Display the full report to the user. Call out any locales with **pending** strings — these may require a conversation with Product Management before proceeding, as they could block the train-hop for affected regions.
+Display the full report. Call out any locales with **pending** strings — these may need a conversation with Product Management before proceeding, as they could block the train-hop for affected regions.
 
-Wait for the user to confirm it is safe to continue before proceeding.
+Wait for the user to confirm it is safe to continue.
 
-### 4. Get or file a bug
+### 3. File a bug
 
-If $ARGUMENTS contains a bug number, use it and skip to step 5.
-
-Otherwise, file a new bug via the Bugzilla REST API:
+Read the major version from `browser/config/version.txt` (e.g. `147`), then run:
 
 ```bash
-curl -s -X POST https://bugzilla.mozilla.org/rest/bug \
-  -H "Content-Type: application/json" \
-  -d '{
-    "api_key": "'"$BUGZILLA_API_KEY"'",
-    "product": "Firefox",
-    "component": "New Tab Page",
-    "summary": "Update locales for Firefox MAJOR_VERSION train-hop",
-    "version": "Trunk",
-    "op_sys": "All",
-    "platform": "All",
-    "blocks": [META_BUG_NUMBER]
-  }'
+python3 <skill-scripts-dir>/file_bug.py \
+  --summary "Update locales for Firefox MAJOR_VERSION train-hop" \
+  --blocks META_BUG_NUMBER
 ```
 
-Replace MAJOR_VERSION with the Nightly major version read in step 1 (e.g. `147`), and META_BUG_NUMBER with the meta bug number from step 1 of the main workflow (omit the `blocks` field if no meta bug number is available).
+Omit `--blocks` if no meta bug number is available. Note the printed bug ID.
 
-- If `BUGZILLA_API_KEY` is set in the environment, run this automatically and extract the `id` from the response.
-- If `BUGZILLA_API_KEY` is not set, print the curl command (with values substituted) for the user to run, then wait for them to provide the bug number before continuing.
-
-### 5. Lint
+### 4. Create a branch, lint, commit, and submit
 
 ```bash
+git checkout -b bug-BUG_NUMBER-update-locales-trainhop
 ./mach lint browser/extensions/newtab/
-```
-
-If linting fails, fix the issue before proceeding.
-
-### 6. Commit
-
-```bash
 git commit browser/extensions/newtab/ -m "Bug BUG_NUMBER - Update locales for Firefox MAJOR_VERSION train-hop r?#home-newtab-reviewers"
-```
-
-### 7. Submit for review
-
-```bash
 moz-phab submit
 ```
+
+## Expected Result
+
+A Phabricator revision is open for review. `git log --oneline -1` shows the locales commit on the new branch.
 
 ## Troubleshooting
 
 **Pending strings in locales report**
-Stop and inform the user which locales have pending strings. They should consult Product Management before proceeding, as train-hopping may need to be blocked for affected regions or gated via Nimbus feature flags.
-
-**mach command not found**
-Ensure you are running from the root of the Firefox source tree.
+Stop and inform the user which locales are affected. Consult Product Management — the train-hop may need to be blocked for those regions or gated via Nimbus.
 
 **Lint fails**
-Read the error output, fix the issue, and re-run the linter before committing.
+Read the error, fix the issue, and re-run before committing.
 
-**moz-phab submit fails with auth error**
+**moz-phab auth error**
 Ask the user to run `moz-phab submit` manually and check their Phabricator token.

@@ -1,16 +1,14 @@
 # Train-hop: Update Metrics
 
-Generates updated runtime metrics JSON files for the Beta and Release channels, cleans up stale files, and commits the result.
+Generates updated runtime metrics JSON files for Beta and Release, cleans up stale files, and commits.
 
-## Important
+## Pre-condition
 
-Do not skip any steps. Complete each step fully before moving to the next.
+Working tree is clean on `main`.
 
 ## Steps
 
-### 1. Run channel-metrics-diff for both channels
-
-Run both commands:
+### 1. Run channel-metrics-diff
 
 ```bash
 ./mach newtab channel-metrics-diff --channel beta
@@ -19,73 +17,45 @@ Run both commands:
 
 ### 2. Clean up stale runtime-metrics files
 
-List the files in `browser/extensions/newtab/webext-glue/metrics/`:
-
 ```bash
-ls browser/extensions/newtab/webext-glue/metrics/
+python3 <skill-scripts-dir>/cleanup_metrics.py
 ```
 
-Read `browser/config/version.txt` to get the current release version major number (e.g. `146` from `146.0`).
-
-Delete any `runtime-metrics-N.json` file where N is less than the current release major version. Do not delete empty files — a file containing `{"metrics": {}, "pings": {}}` should be kept if its version is current.
+The script deletes `runtime-metrics-N.json` files where N is less than the current Nightly major version and reports what was deleted.
 
 ### 3. Review changes
 
-Show the user a summary of what changed (new files, deleted files, modified files) in `browser/extensions/newtab/webext-glue/metrics/`.
+Show the user a summary of changed, added, and deleted files in `browser/extensions/newtab/webext-glue/metrics/`.
 
-### 4. Lint
+### 4. File a bug
+
+Read the major version from `browser/config/version.txt` (e.g. `147`), then run:
 
 ```bash
+python3 <skill-scripts-dir>/file_bug.py \
+  --summary "Update runtime-metrics for Firefox MAJOR_VERSION train-hop" \
+  --blocks META_BUG_NUMBER
+```
+
+Omit `--blocks` if no meta bug number is available. Note the printed bug ID.
+
+### 5. Create a branch, lint, commit, and submit
+
+```bash
+git checkout -b bug-BUG_NUMBER-update-metrics-trainhop
 ./mach lint browser/extensions/newtab/webext-glue/metrics/
-```
-
-If linting fails, fix the issue before proceeding.
-
-### 5. Get or file a bug
-
-If a meta bug number was provided in the main workflow, use it and skip to step 6.
-
-Otherwise, file a new bug via the Bugzilla REST API:
-
-```bash
-curl -s -X POST https://bugzilla.mozilla.org/rest/bug \
-  -H "Content-Type: application/json" \
-  -d '{
-    "api_key": "'"$BUGZILLA_API_KEY"'",
-    "product": "Firefox",
-    "component": "New Tab Page",
-    "summary": "Update runtime-metrics for Firefox MAJOR_VERSION train-hop",
-    "version": "Trunk",
-    "op_sys": "All",
-    "platform": "All",
-    "blocks": [META_BUG_NUMBER]
-  }'
-```
-
-Replace MAJOR_VERSION with the Nightly major version read in step 2 (e.g. `147`), and META_BUG_NUMBER with the meta bug number from the main workflow (omit the `blocks` field if no meta bug number is available).
-
-- If `BUGZILLA_API_KEY` is set in the environment, run this automatically and extract the `id` from the response.
-- If `BUGZILLA_API_KEY` is not set, print the curl command (with values substituted) for the user to run, then wait for them to provide the bug number before continuing.
-
-### 6. Commit
-
-```bash
 git commit browser/extensions/newtab/webext-glue/metrics/ -m "Bug BUG_NUMBER - Update New Tab runtime metrics for train-hop r?#home-newtab-reviewers"
-```
-
-### 7. Submit for review
-
-```bash
 moz-phab submit -s
 ```
 
+## Expected Result
+
+A Phabricator revision is open for review. `git log --oneline -1` shows the metrics commit on the new branch.
+
 ## Troubleshooting
 
-**mach command not found**
-Ensure you are running from the root of the Firefox source tree.
-
 **Lint fails**
-Read the error output, fix the issue, and re-run the linter before committing.
+Read the error, fix the issue, and re-run before committing.
 
-**moz-phab submit fails with auth error**
+**moz-phab auth error**
 Ask the user to run `moz-phab submit` manually and check their Phabricator token.
