@@ -15,6 +15,33 @@ Do not skip any steps. Complete each step fully before moving to the next. If a 
 
 ## Steps
 
+### 0. Check for Bugzilla API key
+
+Check for a `BUGZILLA_API_KEY` in the following order:
+
+1. Check if the environment variable is already set: `echo $BUGZILLA_API_KEY`
+2. If not set, check for a `.env` file in the root of the Firefox source tree and look for a `BUGZILLA_API_KEY=` entry
+
+If a key is found, confirm it is set and continue.
+
+If no key is found, stop and instruct the user:
+
+> A Bugzilla API key is required to file bugs automatically during this workflow.
+> To create one:
+> 1. Go to https://bugzilla.mozilla.org and sign in
+> 2. Click your name in the top-right → **Preferences** → **API Keys**
+> 3. Enter a description (e.g. "train-hop automation") and click **Generate Key**
+> 4. Copy the generated key and add it to your Firefox `.env` file:
+>    ```
+>    BUGZILLA_API_KEY=your-key-here
+>    ```
+>    Or export it in your shell profile (`~/.zshrc`):
+>    ```
+>    export BUGZILLA_API_KEY=your-key-here
+>    ```
+
+Wait for the user to confirm the key is set before continuing.
+
 ### 1. Update locales
 
 Invoke `/trainhop-update-locales`.
@@ -33,26 +60,32 @@ _Not yet automated._ Instruct the user to:
 
 Wait for the user to provide the Ship task URL before continuing.
 
-### 5. Generate the Nimbus recipe
+### 4. Generate the Nimbus recipe
 
-Invoke `/trainhop-generate-recipe` passing the Ship task URL provided in step 4.
+Run:
 
-### 6. Create Stage Experimenter rollout for QA
+```bash
+./mach newtab trainhop-recipe <ship-task-url>
+```
+
+Display the full output to the user. They will need `addon_version` and `xpi_download_path` to complete step 5.
+
+### 5. Create Stage Experimenter rollout for QA
 
 _Not yet automated._ Instruct the user to:
 - Sign into the staging version of Experimenter
 - Clone the existing QA rollout template
-- Set the newtabTrainhopAddon feature value to the recipe from step 5
+- Set the newtabTrainhopAddon feature value to the recipe from step 4
 - Set min/max Firefox version numbers
 - Request rollout approval for QA
 
 Wait for the user to confirm the stage rollout is live before continuing.
 
-### 7. File QA ticket
+### 6. File QA ticket
 
 Invoke `/trainhop-file-qa-ticket` passing $ARGUMENTS (the bug number, if provided).
 
-### 8. Create Production Experimenter rollouts
+### 7. Create Production Experimenter rollouts
 
 _Not yet automated._ Instruct the user to create three rollouts on the production Experimenter instance:
 - **Prior version rollout**: lock to minimum version, exclude from new rollout
@@ -61,15 +94,15 @@ _Not yet automated._ Instruct the user to create three rollouts on the productio
 
 Remind the user: do not request approval yet — wait for QA sign-off.
 
-### 9. Bump minor version
+### 8. Bump minor version
 
 Invoke `/trainhop-bump-version` passing $ARGUMENTS (the bug number, if provided).
 
-### 10. Wait for QA sign-off
+### 9. Wait for QA sign-off
 
 Pause and prompt the user to confirm QA has returned a green report before continuing.
 
-### 11. Ship to Release and Beta
+### 10. Ship to Release and Beta
 
 _Not yet automated._ Instruct the user to:
 - Alert `#system-addon-release-process` in Slack with the QA report and rollout link
@@ -77,7 +110,7 @@ _Not yet automated._ Instruct the user to:
 - Once approved, throttle/end prior rollouts as needed and ramp to 100% over the following days
 - Approve the Beta rollout immediately at 100%
 
-### 12. Find backward-compat shims to clean up
+### 11. Find backward-compat shims to clean up
 
 Invoke `/trainhop-find-compat-shims`.
 
