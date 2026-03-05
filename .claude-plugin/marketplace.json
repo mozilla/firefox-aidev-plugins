@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "newtab",
-      "source": "/plugins/newtab"
+      "source": "./plugins/newtab"
     }
   ]
 }
