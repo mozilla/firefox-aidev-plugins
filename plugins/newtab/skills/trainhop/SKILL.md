@@ -42,15 +42,19 @@ If no key is found, stop and instruct the user:
 
 Wait for the user to confirm the key is set before continuing.
 
-### 1. Update locales
+### 1. Create meta bug
 
-Invoke `/trainhop-update-locales`.
+Invoke `/trainhop-create-metabug`. Note the returned meta bug number — it will be passed to all subsequent skills.
 
-### 2. Update metrics
+### 2. Update locales
 
-Invoke `/trainhop-update-metrics`.
+Invoke `/trainhop-update-locales` passing the meta bug number from step 1.
 
-### 3. Build and sign the XPI via ShipIt
+### 3. Update metrics
+
+Invoke `/trainhop-update-metrics` passing the meta bug number from step 1.
+
+### 4. Build and sign the XPI via ShipIt
 
 _Not yet automated._ Instruct the user to:
 - Sign into the corporate VPN
@@ -60,7 +64,7 @@ _Not yet automated._ Instruct the user to:
 
 Wait for the user to provide the Ship task URL before continuing.
 
-### 4. Generate the Nimbus recipe
+### 5. Generate the Nimbus recipe
 
 Run:
 
@@ -68,24 +72,24 @@ Run:
 ./mach newtab trainhop-recipe <ship-task-url>
 ```
 
-Display the full output to the user. They will need `addon_version` and `xpi_download_path` to complete step 5.
+Display the full output to the user. They will need `addon_version` and `xpi_download_path` to complete step 6.
 
-### 5. Create Stage Experimenter rollout for QA
+### 6. Create Stage Experimenter rollout for QA
 
 _Not yet automated._ Instruct the user to:
 - Sign into the staging version of Experimenter
 - Clone the existing QA rollout template
-- Set the newtabTrainhopAddon feature value to the recipe from step 4
+- Set the newtabTrainhopAddon feature value to the recipe from step 5
 - Set min/max Firefox version numbers
 - Request rollout approval for QA
 
 Wait for the user to confirm the stage rollout is live before continuing.
 
-### 6. File QA ticket
+### 7. File QA ticket
 
-Invoke `/trainhop-file-qa-ticket` passing $ARGUMENTS (the bug number, if provided).
+Invoke `/trainhop-file-qa-ticket` passing the meta bug number from step 1.
 
-### 7. Create Production Experimenter rollouts
+### 8. Create Production Experimenter rollouts
 
 _Not yet automated._ Instruct the user to create three rollouts on the production Experimenter instance:
 - **Prior version rollout**: lock to minimum version, exclude from new rollout
@@ -94,15 +98,15 @@ _Not yet automated._ Instruct the user to create three rollouts on the productio
 
 Remind the user: do not request approval yet — wait for QA sign-off.
 
-### 8. Bump minor version
+### 9. Bump minor version
 
-Invoke `/trainhop-bump-version` passing $ARGUMENTS (the bug number, if provided).
+Invoke `/trainhop-bump-version` passing the meta bug number from step 1.
 
-### 9. Wait for QA sign-off
+### 10. Wait for QA sign-off
 
 Pause and prompt the user to confirm QA has returned a green report before continuing.
 
-### 10. Ship to Release and Beta
+### 11. Ship to Release and Beta
 
 _Not yet automated._ Instruct the user to:
 - Alert `#system-addon-release-process` in Slack with the QA report and rollout link
@@ -110,7 +114,7 @@ _Not yet automated._ Instruct the user to:
 - Once approved, throttle/end prior rollouts as needed and ramp to 100% over the following days
 - Approve the Beta rollout immediately at 100%
 
-### 11. Find backward-compat shims to clean up
+### 12. Find backward-compat shims to clean up
 
 Invoke `/trainhop-find-compat-shims`.
 

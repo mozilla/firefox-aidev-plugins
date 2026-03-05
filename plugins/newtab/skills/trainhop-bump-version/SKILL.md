@@ -1,8 +1,7 @@
 ---
 name: trainhop-bump-version
 description: Bumps the newtab version in manifest.json after cutting a train-hop XPI release. Use when explicitly asked to "bump the newtab version after train-hop", "post-train-hop version bump", or "bump minor version for newtab". Optionally pass an existing Bugzilla bug number. Do NOT use for general version bumps or non-train-hop releases.
-argument-hint: "[bug-number] (optional)"
-disable-model-invocation: true
+argument-hint: "[meta-bug-number] (optional)"
 ---
 
 # Train-hop: Bump Minor Version
@@ -48,12 +47,15 @@ curl -s -X POST https://bugzilla.mozilla.org/rest/bug \
     "summary": "Bump the minor version number of New Tab from OLD_VERSION to NEW_VERSION",
     "version": "Trunk",
     "op_sys": "All",
-    "platform": "All"
+    "platform": "All",
+    "blocks": [META_BUG_NUMBER]
   }'
 ```
 
+Replace META_BUG_NUMBER with the meta bug number from $ARGUMENTS (omit the `blocks` field if no meta bug number was provided).
+
 - If `BUGZILLA_API_KEY` is set in the environment, run this automatically and extract the `id` from the response.
-- If `BUGZILLA_API_KEY` is not set, print the curl command (with OLD_VERSION and NEW_VERSION substituted) for the user to run, then wait for them to provide the bug number before continuing.
+- If `BUGZILLA_API_KEY` is not set, print the curl command (with values substituted) for the user to run, then wait for them to provide the bug number before continuing.
 
 ### 5. Edit manifest.json
 
