@@ -1,8 +1,3 @@
----
-name: trainhop-create-metabug
-description: Creates the Bugzilla meta bug for a New Tab train-hop release. Use when asked to "create the train-hop metabug" or "file the train-hop meta bug". Returns the meta bug number for use by other train-hop skills.
----
-
 # Train-hop: Create Meta Bug
 
 Files the Bugzilla meta bug that tracks the full train-hop release. All other bugs filed during the train-hop process should block this meta bug.
