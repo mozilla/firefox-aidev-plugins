@@ -1,127 +1,87 @@
 ---
 name: trainhop
-description: Runs the complete New Tab train-hop workflow from start to finish. Use when asked to "run the train-hop", "start a train-hop", "do a train-hop release", or "perform a train-hop". Optionally pass an existing Bugzilla bug number. Do NOT use for individual steps of the train-hop process.
+description: Runs the New Tab train-hop release workflow for all automated steps: metabug, locales, metrics, Nimbus recipe, QA ticket, Confluence page, and version bump. Use when asked to "run the train-hop", "start a train-hop", or "do a train-hop". Do NOT use for individual steps like bumping the version or updating locales alone — those have their own skills.
 argument-hint: "[bug-number] (optional)"
 disable-model-invocation: true
 ---
 
 # Train-hop: Full Workflow
 
-Orchestrates the complete New Tab train-hop release process. Stop and report to the user if any step fails.
+## Before Starting
 
-## Important
+**Step 1: Ask the user which phase to run** (present as a numbered list):
 
-Do not skip any steps. Complete each step fully before moving to the next. If a step is marked "not yet automated", pause and instruct the user to complete it manually before continuing.
+> Which steps would you like to run?
+>
+> **1. Full workflow** — all automated steps from start to finish
+> **2. Prep only** — steps 1–3: create metabug, update locales, update metrics (run before the XPI is cut)
+> **3. Post-XPI** — steps 4–6: Nimbus recipe, QA ticket + Confluence page, version bump
+> **4. Custom** — specify which numbered steps to include
+
+Wait for the user's answer before continuing.
+
+**Step 2: Collect inputs** — ask for the following based on the selected phase:
+
+- If the phase includes step 4 (Nimbus recipe): **Ship task URL** from ShipIt
+- If the phase includes step 5 (QA ticket + Confluence page):
+  - **XPI cut date** (e.g. `2026-01-19`)
+  - **QA handoff date** (e.g. `2026-01-20`)
+  - **Release date** (e.g. `2026-01-22`)
+  - **Release Management contact** (check https://whattrainisitnow.com for the release owner)
+  - **QA contact** (QA engineer assigned to this train-hop)
+
+**Step 3: Present the plan** — list the steps that will be executed and wait for confirmation before proceeding.
+
+## Pre-conditions
+
+Before running any steps, verify:
+
+- Working tree is clean: `git status` shows no uncommitted changes
+- On `main` branch and up to date: `git pull`
+- Bugzilla API key is ready (see `references/credentials.md` if needed)
+- Atlassian email and API token are ready (see `references/credentials.md` if needed)
 
 ## Steps
 
-### 0. Check for Bugzilla API key
-
-Check for a `BUGZILLA_API_KEY` in the following order:
-
-1. Check if the environment variable is already set: `echo $BUGZILLA_API_KEY`
-2. If not set, check for a `.env` file in the root of the Firefox source tree and look for a `BUGZILLA_API_KEY=` entry
-
-If a key is found, confirm it is set and continue.
-
-If no key is found, stop and instruct the user:
-
-> A Bugzilla API key is required to file bugs automatically during this workflow.
-> To create one:
-> 1. Go to https://bugzilla.mozilla.org and sign in
-> 2. Click your name in the top-right → **Preferences** → **API Keys**
-> 3. Enter a description (e.g. "train-hop automation") and click **Generate Key**
-> 4. Copy the generated key and add it to your Firefox `.env` file:
->    ```
->    BUGZILLA_API_KEY=your-key-here
->    ```
->    Or export it in your shell profile (`~/.zshrc`):
->    ```
->    export BUGZILLA_API_KEY=your-key-here
->    ```
-
-Wait for the user to confirm the key is set before continuing.
+Stop and report to the user if any step fails. Do not proceed past a failed step without explicit instruction.
 
 ### 1. Create meta bug
 
-Follow the instructions in `references/create-metabug.md`. Note the returned meta bug number — it will be used in all subsequent steps.
+Follow `references/create-metabug.md`. Note the returned bug number — pass it to all subsequent steps.
 
 ### 2. Update locales
 
-Follow the instructions in `references/update-locales.md`, passing the meta bug number from step 1.
+Follow `references/update-locales.md`, passing the meta bug number from step 1.
 
 ### 3. Update metrics
 
-Follow the instructions in `references/update-metrics.md`, passing the meta bug number from step 1.
+Follow `references/update-metrics.md`, passing the meta bug number from step 1.
 
-### 4. Build and sign the XPI via ShipIt
-
-_Not yet automated._ Instruct the user to:
-- Sign into the corporate VPN
-- Visit https://shipit.mozilla-releng.net/newxpi, select "newtab", enter the GitHub SHA, and create the release
-- Coordinate with a second HNT engineer for the two-engineer sign-off
-- Copy the Ship task URL once the build completes
-
-Wait for the user to provide the Ship task URL before continuing.
-
-### 5. Generate the Nimbus recipe
-
-Run:
+### 4. Generate the Nimbus recipe
 
 ```bash
 ./mach newtab trainhop-recipe <ship-task-url>
 ```
 
-Display the full output to the user. They will need `addon_version` and `xpi_download_path` to complete step 6.
+Use the Ship task URL collected in the Inputs section. Display the full output.
 
-### 6. Create Stage Experimenter rollout for QA
+### 5. File QA ticket and create Confluence page
 
-_Not yet automated._ Instruct the user to:
-- Sign into the staging version of Experimenter
-- Clone the existing QA rollout template
-- Set the newtabTrainhopAddon feature value to the recipe from step 5
-- Set min/max Firefox version numbers
-- Request rollout approval for QA
+Follow `references/file-qa-ticket.md`. Note the returned Jira ticket key.
 
-Wait for the user to confirm the stage rollout is live before continuing.
+Then follow `references/create-confluence-page.md`, passing:
+- The meta bug number from step 1
+- The QA ticket key from above
+- The dates and contacts collected in the Inputs section
 
-### 7. File QA ticket
+### 6. Bump minor version
 
-_Not yet automated._ Instruct the user to file a QA ticket, linking to the meta bug from step 1.
-
-### 8. Create Production Experimenter rollouts
-
-_Not yet automated._ Instruct the user to create three rollouts on the production Experimenter instance:
-- **Prior version rollout**: lock to minimum version, exclude from new rollout
-- **Release rollout**: new version, start at 25% (or 100% if a prior rollout exists)
-- **Beta rollout**: new version, 100%
-
-Remind the user: do not request approval yet — wait for QA sign-off.
-
-### 9. Bump minor version
-
-Follow the instructions in `references/bump-version.md`, passing the meta bug number from step 1.
-
-### 10. Wait for QA sign-off
-
-Pause and prompt the user to confirm QA has returned a green report before continuing.
-
-### 11. Ship to Release and Beta
-
-_Not yet automated._ Instruct the user to:
-- Alert `#system-addon-release-process` in Slack with the QA report and rollout link
-- Request Release Management approval on the production Release rollout
-- Once approved, throttle/end prior rollouts as needed and ramp to 100% over the following days
-- Approve the Beta rollout immediately at 100%
-
-### 12. Find backward-compat shims to clean up
-
-_Not yet automated._ Instruct the user to search for backward-compatibility shims in the newtab codebase that can now be removed.
+Follow `references/bump-version.md`, passing the meta bug number from step 1.
 
 ## Troubleshooting
 
 **A reference file is missing**
-Inform the user which file is missing and that the skill may need to be reinstalled via `claude plugin install newtab`.
+The skill may need to be reinstalled: `claude plugin install newtab`.
 
 **Step fails partway through**
-Report which step failed and its error output. Do not attempt to continue past a failed step without explicit user instruction.
+Report which step failed and its error output. Do not continue without explicit user instruction.
