@@ -6,9 +6,7 @@
   },
   "plugins": [
     {
-      "name": "firefox-newtab",
-      "path": "plugins/newtab",
-      "description": "Skills and tools for Firefox Home/New Tab development"
+      "name": "newtab"
     }
   ]
 }
