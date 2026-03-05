@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 # Train-hop: Full Workflow
 
-Orchestrates the complete New Tab train-hop release process by invoking each child skill in sequence. Stop and report to the user if any step fails.
+Orchestrates the complete New Tab train-hop release process. Stop and report to the user if any step fails.
 
 ## Important
 
@@ -44,15 +44,15 @@ Wait for the user to confirm the key is set before continuing.
 
 ### 1. Create meta bug
 
-Invoke `/trainhop-create-metabug`. Note the returned meta bug number — it will be passed to all subsequent skills.
+Follow the instructions in `references/create-metabug.md`. Note the returned meta bug number — it will be used in all subsequent steps.
 
 ### 2. Update locales
 
-Invoke `/trainhop-update-locales` passing the meta bug number from step 1.
+Follow the instructions in `references/update-locales.md`, passing the meta bug number from step 1.
 
 ### 3. Update metrics
 
-Invoke `/trainhop-update-metrics` passing the meta bug number from step 1.
+Follow the instructions in `references/update-metrics.md`, passing the meta bug number from step 1.
 
 ### 4. Build and sign the XPI via ShipIt
 
@@ -87,7 +87,7 @@ Wait for the user to confirm the stage rollout is live before continuing.
 
 ### 7. File QA ticket
 
-Invoke `/trainhop-file-qa-ticket` passing the meta bug number from step 1.
+_Not yet automated._ Instruct the user to file a QA ticket, linking to the meta bug from step 1.
 
 ### 8. Create Production Experimenter rollouts
 
@@ -100,7 +100,7 @@ Remind the user: do not request approval yet — wait for QA sign-off.
 
 ### 9. Bump minor version
 
-Invoke `/trainhop-bump-version` passing the meta bug number from step 1.
+Follow the instructions in `references/bump-version.md`, passing the meta bug number from step 1.
 
 ### 10. Wait for QA sign-off
 
@@ -116,12 +116,12 @@ _Not yet automated._ Instruct the user to:
 
 ### 12. Find backward-compat shims to clean up
 
-Invoke `/trainhop-find-compat-shims`.
+_Not yet automated._ Instruct the user to search for backward-compatibility shims in the newtab codebase that can now be removed.
 
 ## Troubleshooting
 
-**A child skill is not installed**
-Inform the user which skill is missing and that it can be installed via `claude plugin install newtab`.
+**A reference file is missing**
+Inform the user which file is missing and that the skill may need to be reinstalled via `claude plugin install newtab`.
 
 **Step fails partway through**
 Report which step failed and its error output. Do not attempt to continue past a failed step without explicit user instruction.

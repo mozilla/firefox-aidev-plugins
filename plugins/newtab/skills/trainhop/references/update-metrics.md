@@ -1,9 +1,3 @@
----
-name: trainhop-update-metrics
-description: Updates the New Tab metrics and pings JSON files for a train-hop release. Use when asked to "update train-hop metrics", "run channel-metrics-diff", or "prepare metrics for train-hop". Do NOT use for general metrics changes unrelated to train-hopping.
-argument-hint: "[meta-bug-number] (optional)"
----
-
 # Train-hop: Update Metrics
 
 Generates updated runtime metrics JSON files for the Beta and Release channels, cleans up stale files, and commits the result.
@@ -49,7 +43,7 @@ If linting fails, fix the issue before proceeding.
 
 ### 5. Get or file a bug
 
-If $ARGUMENTS contains a bug number, use it and skip to step 6.
+If a meta bug number was provided in the main workflow, use it and skip to step 6.
 
 Otherwise, file a new bug via the Bugzilla REST API:
 
@@ -68,7 +62,7 @@ curl -s -X POST https://bugzilla.mozilla.org/rest/bug \
   }'
 ```
 
-Replace MAJOR_VERSION with the Nightly major version read in step 2 (e.g. `147`), and META_BUG_NUMBER with the meta bug number from $ARGUMENTS (omit the `blocks` field if no meta bug number was provided).
+Replace MAJOR_VERSION with the Nightly major version read in step 2 (e.g. `147`), and META_BUG_NUMBER with the meta bug number from the main workflow (omit the `blocks` field if no meta bug number is available).
 
 - If `BUGZILLA_API_KEY` is set in the environment, run this automatically and extract the `id` from the response.
 - If `BUGZILLA_API_KEY` is not set, print the curl command (with values substituted) for the user to run, then wait for them to provide the bug number before continuing.

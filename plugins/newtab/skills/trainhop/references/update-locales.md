@@ -1,9 +1,3 @@
----
-name: trainhop-update-locales
-description: Updates the New Tab locale files for a train-hop release. Use when asked to "update train-hop locales", "run update-locales for train-hop", or "prepare locales for train-hop". Do NOT use for general locale changes unrelated to train-hopping.
-argument-hint: "[meta-bug-number] (optional)"
----
-
 # Train-hop: Update Locales
 
 Updates the en-US `newtab.ftl` and pulls the latest translations for all supported locales, then commits the result.
@@ -55,7 +49,7 @@ curl -s -X POST https://bugzilla.mozilla.org/rest/bug \
   }'
 ```
 
-Replace MAJOR_VERSION with the Nightly major version read in step 1 (e.g. `147`), and META_BUG_NUMBER with the meta bug number from $ARGUMENTS (omit the `blocks` field if no meta bug number was provided).
+Replace MAJOR_VERSION with the Nightly major version read in step 1 (e.g. `147`), and META_BUG_NUMBER with the meta bug number from step 1 of the main workflow (omit the `blocks` field if no meta bug number is available).
 
 - If `BUGZILLA_API_KEY` is set in the environment, run this automatically and extract the `id` from the response.
 - If `BUGZILLA_API_KEY` is not set, print the curl command (with values substituted) for the user to run, then wait for them to provide the bug number before continuing.
