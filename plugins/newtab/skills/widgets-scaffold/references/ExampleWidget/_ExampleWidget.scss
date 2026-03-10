@@ -1,0 +1,58 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+/* stylelint-disable stylelint-plugin-mozilla/use-design-tokens */
+
+.example-widget {
+  @include newtab-card-style;
+
+  grid-column: span 1;
+  width: var(--newtab-card-grid-layout-width);
+
+  .has-sections-grid & {
+    width: var(--newtab-card-width-medium);
+  }
+
+  border-radius: var(--border-radius-large);
+  padding: var(--space-medium);
+  height: var(--newtab-card-height);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--box-shadow-card);
+}
+
+.example-widget-title-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-block-end: var(--space-xsmall);
+
+  h3 {
+    margin-block: 0;
+    font-weight: var(--font-weight);
+    font-size: var(--font-size-root);
+  }
+}
+
+.example-widget-context-menu-wrapper {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.example-widget:hover,
+.example-widget:focus-within {
+  .example-widget-context-menu-wrapper {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+// Widget-specific styles below.
+// Use design system tokens only — no hardcoded colors or spacing values.
+.example-widget-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-small);
+}
