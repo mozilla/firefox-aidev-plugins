@@ -14,6 +14,7 @@ Usage:
 import argparse
 import getpass
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -30,7 +31,7 @@ def main():
     parser.add_argument("--blocks", type=int, help="Bug number that this bug blocks")
     args = parser.parse_args()
 
-    api_key = getpass.getpass("Bugzilla API key: ")
+    api_key = os.environ.get("BUGZILLA_API_KEY") or getpass.getpass("Bugzilla API key: ")
 
     payload = {
         "api_key": api_key,
@@ -60,7 +61,8 @@ def main():
     try:
         with urllib.request.urlopen(req) as resp:
             result = json.loads(resp.read())
-            print(result["id"])
+            bug_id = result["id"]
+            print(f"{bug_id}: https://bugzilla.mozilla.org/show_bug.cgi?id={bug_id}")
     except urllib.error.HTTPError as e:
         error_body = e.read().decode()
         print(f"Error: HTTP {e.code} {e.reason}", file=sys.stderr)

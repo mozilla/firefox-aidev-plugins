@@ -9,10 +9,14 @@ Creates a Jira ticket in the QA project to notify QA that the train-hop XPI is r
 Read the major version from `browser/config/version.txt` (e.g. `147`), then run:
 
 ```bash
-python3 <skill-scripts-dir>/file_jira_ticket.py --version MAJOR_VERSION
+python3 <skill-scripts-dir>/file_jira_ticket.py \
+  --version MAJOR_VERSION \
+  --meta-bug META_BUG_NUMBER \
+  --confluence-url CONFLUENCE_PAGE_URL \
+  --due-date YYYY-MM-DD
 ```
 
-The script prompts for your Atlassian email and API token and prints the ticket key (e.g. `QA-1234`). Note it for the Confluence page.
+Credentials are read from env vars `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`, and `ATLASSIAN_NAME` (see `references/credentials.md`), falling back to interactive prompts. Prints the ticket key (e.g. `QA-1234`). Note it for the Confluence page.
 
 ## Expected Result
 
