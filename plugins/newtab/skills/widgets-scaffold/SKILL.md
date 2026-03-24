@@ -33,9 +33,12 @@ Files touched by every widget:
 4. `Widgets/Widgets.jsx` — import, enabled logic, null guard, JSX render
 5. `Widgets/_Widgets.scss` — add CSS class to `:has()` selector
 6. `content-src/styles/activity-stream.scss` — add `@import`
-7. `stylelint-rollouts.config.js` (repo root) — add the new widget's SCSS path in alphabetical order alongside the other widget entries
-8. `Base.jsx`, `CustomizeMenu.jsx`, `ContentSection.jsx` — Customize panel toggle
-9. `browser/locales/en-US/browser/newtab/newtab.ftl` — FTL strings
+7. `content-src/styles/nova/activity-stream.scss` — add `@import` (**required — without this, styles won't render in Nova mode**)
+8. `stylelint-rollouts.config.js` (repo root) — add the new widget's SCSS path in alphabetical order alongside the other widget entries
+9. `Base.jsx`, `CustomizeMenu.jsx`, `ContentSection.jsx` — Customize panel toggle
+10. `AboutPreferences.sys.mjs` — register prefs, settings, and items for `about:preferences`
+11. `browser/locales/en-US/browser/newtab/newtab.ftl` — FTL strings for new tab
+12. `browser/locales/en-US/browser/preferences/preferences.ftl` — FTL string for `about:preferences` toggle
 
 Additional files if the spec requires them:
 - `common/Actions.mjs` + `common/Reducers.sys.mjs` — only if Redux state is needed
@@ -51,7 +54,15 @@ Only stop if you hit a genuine blocker (e.g. a file doesn't exist where expected
 or the codebase structure differs from what the plan assumed). In that case,
 explain what you found and what decision is needed before continuing.
 
-### Step 4 — Follow-up
+### Step 4 — Build and verify
+
+After scaffolding, the build artifacts must be regenerated:
+
+1. `./mach newtab bundle` — compile SCSS and JS (**`./mach build faster` alone does NOT recompile SCSS**)
+2. `./mach build faster` — copy compiled artifacts to the build output
+3. Commit the build artifacts: `css/activity-stream.css`, `css/nova/activity-stream.css`, `data/content/activity-stream.bundle.js`
+
+### Step 5 — Follow-up
 
 Remind the user:
 - Add any remaining Fluent strings for context menu items and widget body labels
@@ -61,7 +72,8 @@ Then explain how to enable the widget:
 
 **Option A — `about:config`**
 
-Set both of these to `true`:
+Set **all three** of these to `true`:
+- `browser.newtabpage.activity-stream.widgets.system.enabled` (parent gate for all widgets — defaults to `false`)
 - `browser.newtabpage.activity-stream.widgets.{widgetKey}.enabled`
 - `browser.newtabpage.activity-stream.widgets.system.{widgetKey}.enabled`
 
