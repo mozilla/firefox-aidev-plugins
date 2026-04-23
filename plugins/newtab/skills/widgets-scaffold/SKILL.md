@@ -4,7 +4,7 @@ description: Scaffolds a new Firefox New Tab widget with JSX, SCSS, prefs, telem
 
 # New Tab Widget Scaffold
 
-Widgets live in `browser/extensions/newtab/content-src/components/Widgets/`.
+Widgets live in `browser/extensions/newtab/content-src/components/Widgets/{Name}/`.
 
 ## Workflow
 
@@ -13,7 +13,7 @@ Widgets live in `browser/extensions/newtab/content-src/components/Widgets/`.
 Ask the user to run the requirements script first:
 
 ```
-python3 .claude/skills/newtab-widget-scaffold/scripts/gather_requirements.py
+python3 {BASE_DIR}/scripts/gather_requirements.py
 ```
 
 The script asks all required questions and prints a widget spec summary.
@@ -28,17 +28,18 @@ non-obvious requirements and gotchas.
 
 Files touched by every widget:
 1. `ActivityStream.sys.mjs` — register prefs (**do this first, then run `./mach build faster` before proceeding**)
-2. `Widgets/{Name}/{Name}.jsx` — new widget component
-3. `Widgets/{Name}/_{Name}.scss` — widget styles
+2. `Widgets/{Name}/{Name}.jsx` — new widget component. Add `PREF_NOVA_ENABLED = "nova.enabled"` and `PREF_{NAME}_SIZE = "widgets.{widgetKey}.size"` constants. Inside the component, read `novaEnabled` from prefs and derive size with a `// @nova-cleanup(remove-pref)` block: when `novaEnabled`, set `widgetSize` from the size pref (defaulting to `"medium"`) and `isSmallSize` when the pref equals `"small"`; otherwise fall back to classic maximize logic. On the root element, apply `col-4 ${widgetSize}-widget` classes when `novaEnabled`, wrapped with a `// @nova-cleanup(remove-conditional)` comment. When scaffolding the context menu, check the spec's `supportsSmallSize` field: if `yes`, include a resize item for small in addition to medium and large; if `no`, only include medium and large.
+3. `Widgets/{Name}/_{Name}.scss` — widget styles. Write Nova-compatible styles as the default. Wrap any classic-only layout (fixed widths, heights) in `.classic-enabled &` blocks marked with `// @nova-cleanup(remove-conditional): Remove classic ... styles after Nova ships`. Use `.nova-enabled &` only if the widget needs to declare its own `grid-column` span within the Nova subgrid.
 4. `Widgets/Widgets.jsx` — import, enabled logic, null guard, JSX render
 5. `Widgets/_Widgets.scss` — add CSS class to `:has()` selector
-6. `content-src/styles/activity-stream.scss` — add `@import`
-7. `content-src/styles/nova/activity-stream.scss` — add `@import` (**required — without this, styles won't render in Nova mode**)
-8. `stylelint-rollouts.config.js` (repo root) — add the new widget's SCSS path in alphabetical order alongside the other widget entries
-9. `Base.jsx`, `CustomizeMenu.jsx`, `ContentSection.jsx` — Customize panel toggle
-10. `AboutPreferences.sys.mjs` — register prefs, settings, and items for `about:preferences`
-11. `browser/locales/en-US/browser/newtab/newtab.ftl` — FTL strings for new tab
-12. `browser/locales/en-US/browser/preferences/preferences.ftl` — FTL string for `about:preferences` toggle
+6. `test/jest/content-src/components/Widgets/Widgets.test.jsx` — add test coverage for the new widget
+7. `content-src/styles/activity-stream.scss` — add `@import`
+8. `content-src/styles/nova/activity-stream.scss` — add `@import` (**required — without this, styles won't render in Nova mode**)
+9. `stylelint-rollouts.config.js` (repo root) — add the new widget's SCSS path in alphabetical order alongside the other widget entries
+10. `Base.jsx`, `CustomizeMenu.jsx`, `ContentSection.jsx`, `WidgetsManagementPanel.jsx` — Customize panel toggle (add prop to function signature, switch case, and `moz-toggle` in `WidgetsManagementPanel.jsx`)
+11. `AboutPreferences.sys.mjs` — register prefs, settings, and items for `about:preferences`
+12. `browser/locales/en-US/browser/newtab/newtab.ftl` — FTL strings for new tab
+13. `browser/locales/en-US/browser/preferences/preferences.ftl` — FTL string for `about:preferences` toggle
 
 Additional files if the spec requires them:
 - `common/Actions.mjs` + `common/Reducers.sys.mjs` — only if Redux state is needed

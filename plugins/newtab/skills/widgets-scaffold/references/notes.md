@@ -274,3 +274,94 @@ wire it up to the hide action in the individual widget's hide handler.
 Only add a Redux slice if the widget needs cross-tab persistence or complex
 shared state. Simple local state (`useState`) is preferable for transient UI.
 When in doubt, don't add Redux — it can always be added later.
+
+## Widget sizes and supportsSmallSize
+
+The size pref always supports `"medium"` and `"large"`. If the spec's
+`supportsSmallSize` is `yes`, `"small"` is also valid and must be included
+in the context menu and the size derivation logic.
+
+The default size is `"medium"` — use it as the fallback when the pref is not
+yet set. See `references/ExampleWidget/ExampleWidget.jsx` for the full size
+derivation block and the resize context menu with `hidden` attributes.
+
+## about:preferences registration
+
+Every widget must be registered in `AboutPreferences.sys.mjs` and have a
+corresponding FTL string in
+`browser/locales/en-US/browser/preferences/preferences.ftl` for its toggle
+to appear in `about:preferences`.
+
+## Parent gate pref
+
+The pref `browser.newtabpage.activity-stream.widgets.system.enabled` is a
+parent gate for all widgets and defaults to `false`. It must be set to `true`
+alongside the widget-specific prefs for the widget to appear. Always include
+it in enable instructions.
+
+## Widget resize context menu
+
+Every widget has context menu items to resize between medium and large. If the
+spec's `supportsSmallSize` is `yes`, also include a small option. See
+`references/ExampleWidget/ExampleWidget.jsx` for the `handleResize` handler
+and the `hidden`-attribute pattern.
+
+FTL strings for resize items follow this format:
+
+```ftl
+newtab-{css-class}-widget-menu-resize-medium = Medium
+newtab-{css-class}-widget-menu-resize-large = Large
+newtab-{css-class}-widget-menu-resize-small = Small
+```
+
+## Nova layout: JSX patterns
+
+Every widget must read `nova.enabled` and apply Nova-specific classes and size
+logic. All Nova conditionals are temporary and marked for cleanup when Nova ships.
+
+Add at the top of the component file:
+
+```js
+const PREF_NOVA_ENABLED = "nova.enabled";
+const PREF_{WIDGET_KEY}_SIZE = "widgets.{widgetKey}.size";
+```
+
+Inside the component function, add size derivation:
+
+```js
+// @nova-cleanup(remove-pref): Remove novaEnabled and this check; always use prefs[PREF_{WIDGET_KEY}_SIZE] directly after Nova ships
+const novaEnabled = prefs[PREF_NOVA_ENABLED];
+const isSmallSize = novaEnabled
+  ? prefs[PREF_{WIDGET_KEY}_SIZE] === "small"
+  : <classic-size-logic>;
+let widgetSize;
+if (novaEnabled) {
+  // Default is "medium". If spec supportsSmallSize = yes, "small" is also valid.
+  widgetSize = prefs[PREF_{WIDGET_KEY}_SIZE] || "medium";
+} else {
+  widgetSize = isSmallSize ? "small" : "medium";
+}
+```
+
+On the root element's className:
+
+```jsx
+// @nova-cleanup(remove-conditional): Remove novaEnabled check; always apply col-4 and size class after Nova ships
+className={`{css-class} widget ${novaEnabled ? `col-4 ${widgetSize}-widget` : ""} ${isSmallSize ? "is-small" : ""}`}
+```
+
+## Nova layout: SCSS patterns
+
+Classic-specific styles (fixed widths, heights) go inside `.classic-enabled &`
+with a `@nova-cleanup(remove-conditional)` comment — see `_ExampleWidget.scss`
+for the pattern.
+
+If the widget needs to declare its own `grid-column` span within the Nova
+subgrid, use `.nova-enabled &`:
+
+```scss
+// @nova-cleanup(remove-conditional): Make default, remove .nova-enabled selector
+.nova-enabled & {
+  grid-column: span 4;
+}
+```

@@ -14,9 +14,12 @@ const USER_ACTION_TYPES = {
   DO_OTHER_THING: "do_other_thing",
 };
 
+const PREF_NOVA_ENABLED = "nova.enabled";
+
 // Constants for any widget-specific prefs read inside this component.
 // Omit if no extra prefs beyond enabled/system.enabled.
 const PREF_EXAMPLE_WIDGET_MAX_ITEMS = "widgets.exampleWidget.maxItems";
+const PREF_EXAMPLE_WIDGET_SIZE = "widgets.exampleWidget.size";
 
 function ExampleWidget({
   dispatch,
@@ -29,7 +32,19 @@ function ExampleWidget({
   // const widgetData = useSelector(state => state.ExampleWidget);
 
   const impressionFired = useRef(false);
-  const widgetSize = isMaximized ? "medium" : "small";
+
+  // @nova-cleanup(remove-pref): Remove novaEnabled and this check; always use prefs[PREF_EXAMPLE_WIDGET_SIZE] directly after Nova ships
+  const novaEnabled = prefs[PREF_NOVA_ENABLED];
+  const isSmallSize = novaEnabled
+    ? prefs[PREF_EXAMPLE_WIDGET_SIZE] === "small"
+    : isMaximized;
+  let widgetSize;
+  if (novaEnabled) {
+    // Default is "medium". If spec supportsSmallSize = yes, "small" is also valid.
+    widgetSize = prefs[PREF_EXAMPLE_WIDGET_SIZE] || "medium";
+  } else {
+    widgetSize = isSmallSize ? "small" : "medium";
+  }
 
   const handleIntersection = useCallback(() => {
     if (impressionFired.current) {
@@ -99,6 +114,28 @@ function ExampleWidget({
     handleInteraction();
   }
 
+  function handleResize(size) {
+    batch(() => {
+      dispatch(
+        ac.OnlyToMain({
+          type: at.SET_PREF,
+          data: { name: PREF_EXAMPLE_WIDGET_SIZE, value: size },
+        })
+      );
+      dispatch(
+        ac.OnlyToMain({
+          type: at.WIDGETS_USER_EVENT,
+          data: {
+            widget_name: "example_widget",
+            widget_source: "context_menu",
+            user_action: "resize",
+            widget_size: widgetsMayBeMaximized ? size : "medium",
+          },
+        })
+      );
+    });
+  }
+
   function handleLearnMore() {
     batch(() => {
       dispatch(
@@ -125,7 +162,8 @@ function ExampleWidget({
 
   return (
     <article
-      className={`example-widget${isMaximized ? " is-maximized" : ""}`}
+      // @nova-cleanup(remove-conditional): Remove novaEnabled check; always apply col-4 and size class after Nova ships
+      className={`example-widget widget ${novaEnabled ? `col-4 ${widgetSize}-widget` : ""} ${isSmallSize ? "is-small" : ""} ${isMaximized ? "is-maximized" : ""}`}
       ref={el => {
         widgetRef.current = [el];
       }}
@@ -141,6 +179,22 @@ function ExampleWidget({
           />
           <panel-list id="example-widget-context-menu">
             {/* Additional context menu items from spec go here, before Hide */}
+            <panel-item
+              data-l10n-id="newtab-example-widget-menu-resize-medium"
+              onClick={() => handleResize("medium")}
+              hidden={widgetSize === "medium"}
+            />
+            <panel-item
+              data-l10n-id="newtab-example-widget-menu-resize-large"
+              onClick={() => handleResize("large")}
+              hidden={widgetSize === "large"}
+            />
+            {/* Include the following only if spec supportsSmallSize = yes */}
+            <panel-item
+              data-l10n-id="newtab-example-widget-menu-resize-small"
+              onClick={() => handleResize("small")}
+              hidden={widgetSize === "small"}
+            />
             <panel-item
               data-l10n-id="newtab-widget-menu-hide"
               onClick={handleExampleWidgetHide}

@@ -108,6 +108,13 @@ def main():
         allow_empty=True,
     )
 
+    # Q10
+    supports_small_size_raw = ask(
+        "Q10. Does this widget support a small size in addition to medium and large?\n"
+        "     Answer 'yes' or 'no'."
+    )
+    supports_small_size = supports_small_size_raw.lower().startswith("y")
+
     # --- Print summary ---
     print("\n" + "=" * 60)
     print("WIDGET SPEC — hand this to Claude to enter plan mode")
@@ -125,6 +132,7 @@ def main():
     print(f"  extraPrefs:     {extra_prefs or 'none'}")
     print(f"  reduxState:     {'yes — ' + redux_shape if has_redux else 'no'}")
     print(f"  specialConditions: {special_conditions or 'none'}")
+    print(f"  supportsSmallSize: {'yes' if supports_small_size else 'no'}")
     print("=" * 60)
     print("\nNow enter plan mode: /newtab-widget-scaffold with the spec above.")
 
