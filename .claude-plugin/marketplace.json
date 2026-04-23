@@ -8,6 +8,10 @@
     {
       "name": "newtab",
       "source": "./plugins/newtab"
+    },
+    {
+      "name": "ipprotection",
+      "source": "./plugins/ipprotection"
     }
   ]
 }
