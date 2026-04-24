@@ -6,10 +6,15 @@ when a gotcha changes — if the example shows it clearly, it doesn't belong her
 ## New widgets are Nova-only
 
 All widgets created after the Nova launch do not need classic-enabled fallbacks.
-Do not add `PREF_NOVA_ENABLED`, `novaEnabled` conditionals, `.classic-enabled &`
-SCSS blocks, or `@nova-cleanup` comments to new widget files. Those patterns exist
-only in older widgets pending post-launch cleanup. New widget components also do
-not receive `isMaximized` or `widgetsMayBeMaximized` props.
+Do not add `novaEnabled` conditionals, `.classic-enabled &` SCSS blocks, or
+`@nova-cleanup` comments to new widget files. Those patterns exist only in older
+widgets pending post-launch cleanup. New widget components also do not receive
+`isMaximized` or `widgetsMayBeMaximized` props.
+
+Every new widget component must read `PREF_NOVA_ENABLED = "nova.enabled"` and
+return `null` early if it is `false` — placed after all hooks so React's rules
+of hooks are not violated. Mark it with a `// @nova-cleanup(remove-gate)`
+comment so it gets removed once Nova officially ships.
 
 ## Build order matters
 

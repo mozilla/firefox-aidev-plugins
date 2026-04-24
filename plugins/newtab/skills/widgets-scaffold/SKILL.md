@@ -28,7 +28,7 @@ non-obvious requirements and gotchas.
 
 Files touched by every widget:
 1. `ActivityStream.sys.mjs` — register prefs (**do this first, then run `./mach build faster` before proceeding**)
-2. `Widgets/{Name}/{Name}.jsx` — new widget component. Add `PREF_{NAME}_SIZE = "widgets.{widgetKey}.size"` constant. Derive size as `prefs[PREF_{NAME}_SIZE] || "medium"`. Apply `col-4 ${widgetSize}-widget` unconditionally on the root element. Use the submenu pattern for resize (see notes.md — "Widget resize context menu"); do NOT use separate `<panel-item hidden={...}>` elements. Check `supportsSmallSize` from the spec — if `yes`, add `"small"` to the size map in the submenu.
+2. `Widgets/{Name}/{Name}.jsx` — new widget component. Add `PREF_NOVA_ENABLED = "nova.enabled"` and `PREF_{NAME}_SIZE = "widgets.{widgetKey}.size"` constants. Derive size as `prefs[PREF_{NAME}_SIZE] || "medium"`. After all hooks, add a `// @nova-cleanup(remove-gate)` comment followed by `if (!prefs[PREF_NOVA_ENABLED]) { return null; }` to gate the widget on Nova being enabled. Apply `col-4 ${widgetSize}-widget` unconditionally on the root element. Use the submenu pattern for resize (see notes.md — "Widget resize context menu"); do NOT use separate `<panel-item hidden={...}>` elements. Check `supportsSmallSize` from the spec — if `yes`, add `"small"` to the size map in the submenu.
 3. `Widgets/{Name}/_{Name}.scss` — widget styles. Add `&.medium-widget { grid-row: span 2; }` and `&.large-widget { grid-row: span 4; }` inside the root class. Add `&.small-widget { grid-row: span 1; }` only if `supportsSmallSize = yes`.
 4. `Widgets/Widgets.jsx` — import, enabled logic, null guard, JSX render
 5. `Widgets/_Widgets.scss` — add CSS class to `:has()` selector

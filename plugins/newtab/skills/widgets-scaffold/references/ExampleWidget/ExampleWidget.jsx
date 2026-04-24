@@ -14,6 +14,8 @@ const USER_ACTION_TYPES = {
   DO_OTHER_THING: "do_other_thing",
 };
 
+const PREF_NOVA_ENABLED = "nova.enabled";
+
 // Constants for any widget-specific prefs read inside this component.
 // Omit if no extra prefs beyond enabled/system.enabled.
 const PREF_EXAMPLE_WIDGET_MAX_ITEMS = "widgets.exampleWidget.maxItems";
@@ -160,6 +162,11 @@ function ExampleWidget({
         })
       );
     });
+  }
+
+  // @nova-cleanup(remove-gate): Remove this guard and PREF_NOVA_ENABLED after Nova ships
+  if (!prefs[PREF_NOVA_ENABLED]) {
+    return null;
   }
 
   const maxItems = prefs[PREF_EXAMPLE_WIDGET_MAX_ITEMS];
