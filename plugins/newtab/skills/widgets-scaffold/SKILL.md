@@ -65,11 +65,13 @@ After scaffolding, the build artifacts must be regenerated:
 
 ### Step 5 — Follow-up
 
-Remind the user:
+**Always output this section in full after Step 4 — do not skip or summarize it.**
+
+Tell the user:
 - Add any remaining Fluent strings for context menu items and widget body labels
 - Run `./mach lint`
 
-Then explain how to enable the widget:
+Then output the full enable instructions below:
 
 **Option A — `about:config`**
 
