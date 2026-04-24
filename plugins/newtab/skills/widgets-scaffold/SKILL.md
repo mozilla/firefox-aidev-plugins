@@ -37,7 +37,7 @@ Files touched by every widget:
 8. `content-src/styles/nova/activity-stream.scss` — add `@import` (**required — without this, styles won't render in Nova mode**)
 9. `stylelint-rollouts.config.js` (repo root) — add the new widget's SCSS path in alphabetical order alongside the other widget entries
 10. `Base.jsx`, `CustomizeMenu.jsx`, `ContentSection.jsx`, `WidgetsManagementPanel.jsx` — Customize panel toggle (add prop to function signature, switch case, and `moz-toggle` in `WidgetsManagementPanel.jsx`)
-11. `AboutPreferences.sys.mjs` — register prefs, settings, and items for `about:preferences#home` (the Home group, set up in `_setupHomeGroup`). Do not target `about:preferences#newtab` — that section does not exist
+11. `AboutPreferences.sys.mjs` — register prefs, settings, and items in the Home group (`about:preferences#home`), set up in `_setupHomeGroup`
 12. `browser/locales/en-US/browser/newtab/newtab.ftl` — FTL strings for new tab
 13. `browser/locales/en-US/browser/preferences/preferences.ftl` — FTL string for `about:preferences` toggle
 
