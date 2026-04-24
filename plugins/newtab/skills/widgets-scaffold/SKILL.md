@@ -32,12 +32,12 @@ Files touched by every widget:
 3. `Widgets/{Name}/_{Name}.scss` — widget styles. Add `&.medium-widget { grid-row: span 2; }` and `&.large-widget { grid-row: span 4; }` inside the root class. Add `&.small-widget { grid-row: span 1; }` only if `supportsSmallSize = yes`.
 4. `Widgets/Widgets.jsx` — import, enabled logic, null guard, JSX render
 5. `Widgets/_Widgets.scss` — add CSS class to `:has()` selector
-6. `test/jest/content-src/components/Widgets/Widgets.test.jsx` — add test coverage for the new widget
+6. `test/jest/content-src/components/Widgets/{Name}.test.jsx` — create a dedicated test file for the new widget. The shared `Widgets.test.jsx` is for container/integration coverage only; per-widget tests live in their own file alongside the other widgets in that directory (e.g. `FocusTimer.test.jsx`, `Weather.test.jsx`)
 7. `content-src/styles/activity-stream.scss` — add `@import`
 8. `content-src/styles/nova/activity-stream.scss` — add `@import` (**required — without this, styles won't render in Nova mode**)
 9. `stylelint-rollouts.config.js` (repo root) — add the new widget's SCSS path in alphabetical order alongside the other widget entries
 10. `Base.jsx`, `CustomizeMenu.jsx`, `ContentSection.jsx`, `WidgetsManagementPanel.jsx` — Customize panel toggle (add prop to function signature, switch case, and `moz-toggle` in `WidgetsManagementPanel.jsx`)
-11. `AboutPreferences.sys.mjs` — register prefs, settings, and items for `about:preferences`
+11. `AboutPreferences.sys.mjs` — register prefs, settings, and items for `about:preferences#home` (the Home group, set up in `_setupHomeGroup`). Do not target `about:preferences#newtab` — that section does not exist
 12. `browser/locales/en-US/browser/newtab/newtab.ftl` — FTL strings for new tab
 13. `browser/locales/en-US/browser/preferences/preferences.ftl` — FTL string for `about:preferences` toggle
 
