@@ -13,15 +13,12 @@
   flex-direction: column;
   box-shadow: var(--box-shadow-card);
 
-  // @nova-cleanup(remove-conditional): Remove classic fixed-width/height styles after Nova ships
-  .classic-enabled & {
-    grid-column: span 1;
-    width: var(--newtab-card-grid-layout-width);
-    height: var(--newtab-card-height);
+  &.medium-widget {
+    grid-row: span 2;
+  }
 
-    .has-sections-grid & {
-      width: var(--newtab-card-width-medium);
-    }
+  &.large-widget {
+    grid-row: span 4;
   }
 }
 

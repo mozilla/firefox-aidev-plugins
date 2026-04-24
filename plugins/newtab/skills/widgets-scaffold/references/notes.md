@@ -3,6 +3,14 @@
 Things that are non-obvious from the ExampleWidget alone. Only update this file
 when a gotcha changes — if the example shows it clearly, it doesn't belong here.
 
+## New widgets are Nova-only
+
+All widgets created after the Nova launch do not need classic-enabled fallbacks.
+Do not add `PREF_NOVA_ENABLED`, `novaEnabled` conditionals, `.classic-enabled &`
+SCSS blocks, or `@nova-cleanup` comments to new widget files. Those patterns exist
+only in older widgets pending post-launch cleanup. New widget components also do
+not receive `isMaximized` or `widgetsMayBeMaximized` props.
+
 ## Build order matters
 
 Generate and register the prefs in `ActivityStream.sys.mjs` **first**, then
@@ -301,18 +309,15 @@ it in enable instructions.
 
 ## Widget resize context menu
 
-Every widget has context menu items to resize between medium and large. If the
-spec's `supportsSmallSize` is `yes`, also include a small option. See
-`references/ExampleWidget/ExampleWidget.jsx` for the `handleResize` handler
-and the `hidden`-attribute pattern.
+Every widget has a resize submenu. Use the `handleChangeSize` / `sizeSubmenuRef`
+/ `useEffect` pattern shown in `ExampleWidget.jsx` — do NOT use separate
+`<panel-item hidden={...}>` elements. React's synthetic `onClick` does not
+traverse the shadow DOM boundary on `panel-list`, so the hidden-item pattern
+silently does nothing.
 
-FTL strings for resize items follow this format:
-
-```ftl
-newtab-{css-class}-widget-menu-resize-medium = Medium
-newtab-{css-class}-widget-menu-resize-large = Large
-newtab-{css-class}-widget-menu-resize-small = Small
-```
+The submenu uses the shared strings `newtab-widget-size-medium`,
+`newtab-widget-size-large`, and (if `supportsSmallSize = yes`)
+`newtab-widget-size-small` — do not add widget-specific resize FTL strings.
 
 ## Nova layout: JSX patterns
 
