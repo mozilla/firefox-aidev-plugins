@@ -12,6 +12,14 @@
     {
       "name": "ipprotection",
       "source": "./plugins/ipprotection"
+    },
+    {
+      "name": "desktoptheme",
+      "source": "./plugins/desktoptheme"
+    },
+    {
+      "name": "accessibilityfrontend",
+      "source": "./plugins/accessibilityfrontend"
     }
   ]
 }
