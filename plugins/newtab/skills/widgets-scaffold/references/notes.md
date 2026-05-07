@@ -194,6 +194,40 @@ Any handler that dispatches two or more actions must wrap them in `batch()`
 to avoid intermediate renders. This includes `handleHide`, user event handlers,
 and any action that pairs a state change with a telemetry dispatch.
 
+## Nimbus FeatureManifest declaration
+
+The variable read via `prefs.widgetsConfig?.{widgetKey}Enabled` (in
+`Widgets.jsx` and `Base.jsx`) is surfaced through the `newtabWidgets` feature
+in `toolkit/components/nimbus/FeatureManifest.yaml`. Declare it there
+alongside the existing entries (`enabled`, `listsEnabled`, `timerEnabled`,
+`listsBadgeEnabled`, `listsBadgeLabel`):
+
+```yaml
+newtabWidgets:
+  variables:
+    {widgetKey}Enabled:
+      type: boolean
+      description: >-
+        Enable {Display Name} widget
+```
+
+Without this declaration, Nimbus has no schema for the variable, so
+`prefs.widgetsConfig?.{widgetKey}Enabled` always reads as `undefined`. The
+system-pref and trainhop paths continue to work, which makes the gap easy to
+miss in local testing — the widget appears to enable correctly via
+`about:config` and `newtabTrainhop`, but every real Nimbus rollout silently
+no-ops.
+
+Only the `newtabWidgets` feature path needs this. The trainhop path
+(`prefs.trainhopConfig?.widgets?.{widgetKey}Enabled`) consumes the
+`newtabTrainhop` feature's payload as opaque JSON, so individual keys inside
+it do not need separate declarations.
+
+`FeatureManifest.yaml` lives outside `browser/extensions/newtab/` and rides
+the trains — it is not trainhoppable. The variable must land in a Firefox
+release before any code reading it via the Nimbus feature path can rely on
+it; on older channels it will be `undefined`.
+
 ## Nimbus trainhop naming convention
 
 The trainhop key follows camelCase + "Enabled" suffix:

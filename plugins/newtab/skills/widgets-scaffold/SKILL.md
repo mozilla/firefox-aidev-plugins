@@ -40,6 +40,7 @@ Files touched by every widget:
 11. `AboutPreferences.sys.mjs` — register prefs, settings, and items in the Home group (`about:preferences#home`), set up in `_setupHomeGroup`
 12. `browser/locales/en-US/browser/newtab/newtab.ftl` — FTL strings for new tab
 13. `browser/locales/en-US/browser/preferences/preferences.ftl` — FTL string for `about:preferences` toggle
+14. `toolkit/components/nimbus/FeatureManifest.yaml` — declare `{widgetKey}Enabled` under the `newtabWidgets` feature so Nimbus surfaces the variable (without this, `prefs.widgetsConfig?.{widgetKey}Enabled` is always `undefined` and only the system-pref / trainhop paths work)
 
 Additional files if the spec requires them:
 - `common/Actions.mjs` + `common/Reducers.sys.mjs` — only if Redux state is needed
