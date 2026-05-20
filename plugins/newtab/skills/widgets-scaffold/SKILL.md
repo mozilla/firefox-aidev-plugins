@@ -1,8 +1,11 @@
 ---
-description: Scaffolds a new Firefox New Tab widget with JSX, SCSS, prefs, telemetry, Widgets.jsx integration, and a draft test file. Use when the user wants to add a new widget to the New Tab page.
+name: widgets-scaffold
+description: "Scaffolds a new Firefox New Tab widget end-to-end — generates JSX component, SCSS styles, pref registration, telemetry hooks, Customize panel toggle, about:preferences entry, Fluent strings, and a Jest test file. Use when creating a new widget for the Firefox New Tab page, adding a newtab widget component, or scaffolding widget boilerplate in the Firefox browser."
 ---
 
 # New Tab Widget Scaffold
+
+Scaffolds a complete Firefox New Tab widget from a requirements spec. Generates all required files (component, styles, prefs, telemetry, tests) and integrates with Widgets.jsx, the Customize panel, and about:preferences.
 
 Widgets live in `browser/extensions/newtab/content-src/components/Widgets/{Name}/`.
 
@@ -21,46 +24,56 @@ Wait for the user to paste that summary before proceeding.
 
 ### Step 2 — Plan
 
-Enter plan mode. Using the spec and the example in
-`references/ExampleWidget/`, propose the full list of files to
-create/modify before writing anything. Read `references/notes.md` for
-non-obvious requirements and gotchas.
+Enter plan mode. Using the spec and the example in `references/ExampleWidget/`, propose the full list of files to create/modify before writing anything.
 
-Files touched by every widget:
-1. `ActivityStream.sys.mjs` — register prefs (**do this first, then run `./mach build faster` before proceeding**)
-2. `Widgets/{Name}/{Name}.jsx` — new widget component. Add `PREF_NOVA_ENABLED = "nova.enabled"` and `PREF_{NAME}_SIZE = "widgets.{widgetKey}.size"` constants. Derive size as `prefs[PREF_{NAME}_SIZE] || "medium"`. After all hooks, add a `// @nova-cleanup(remove-gate)` comment followed by `if (!prefs[PREF_NOVA_ENABLED]) { return null; }` to gate the widget on Nova being enabled. Apply `col-4 ${widgetSize}-widget` unconditionally on the root element. Use the submenu pattern for resize (see notes.md — "Widget resize context menu"); do NOT use separate `<panel-item hidden={...}>` elements. Check `supportsSmallSize` from the spec — if `yes`, add `"small"` to the size map in the submenu.
-3. `Widgets/{Name}/_{Name}.scss` — widget styles. Add `&.medium-widget { grid-row: span 2; }` and `&.large-widget { grid-row: span 4; }` inside the root class. Add `&.small-widget { grid-row: span 1; }` only if `supportsSmallSize = yes`.
+Read `references/notes.md` before planning — it contains non-obvious requirements and gotchas (build ordering, dual SCSS imports, Nova gating, Customize panel passthrough) that are not visible from the example component alone.
+
+#### Required files (every widget)
+
+**Prefs and build (do first):**
+1. `ActivityStream.sys.mjs` — register prefs, then run `./mach build faster` before proceeding
+
+**Component and styles:**
+2. `Widgets/{Name}/{Name}.jsx` — component with Nova gate, size derivation, telemetry, and resize submenu (see `references/ExampleWidget/` and `references/notes.md` for patterns)
+3. `Widgets/{Name}/_{Name}.scss` — styles with `medium-widget` and `large-widget` grid spans (add `small-widget` only if `supportsSmallSize = yes`)
+
+**Integration:**
 4. `Widgets/Widgets.jsx` — import, enabled logic, null guard, JSX render
 5. `Widgets/_Widgets.scss` — add CSS class to `:has()` selector
-6. `test/jest/content-src/components/Widgets/{Name}.test.jsx` — create a dedicated test file for the new widget. The shared `Widgets.test.jsx` is for container/integration coverage only; per-widget tests live in their own file alongside the other widgets in that directory (e.g. `FocusTimer.test.jsx`, `Weather.test.jsx`)
-7. `content-src/styles/activity-stream.scss` — add `@import`
-8. `content-src/styles/nova/activity-stream.scss` — add `@import` (**required — without this, styles won't render in Nova mode**)
-9. `stylelint-rollouts.config.js` (repo root) — add the new widget's SCSS path in alphabetical order alongside the other widget entries
-10. `Base.jsx`, `CustomizeMenu.jsx`, `ContentSection.jsx`, `WidgetsManagementPanel.jsx` — Customize panel toggle (add prop to function signature, switch case, and `moz-toggle` in `WidgetsManagementPanel.jsx`)
-11. `AboutPreferences.sys.mjs` — register prefs, settings, and items in the Home group (`about:preferences#home`), set up in `_setupHomeGroup`
-12. `browser/locales/en-US/browser/newtab/newtab.ftl` — FTL strings for new tab
-13. `browser/locales/en-US/browser/preferences/preferences.ftl` — FTL string for `about:preferences` toggle
+6. `content-src/styles/activity-stream.scss` — add `@import`
+7. `content-src/styles/nova/activity-stream.scss` — add `@import` (required for Nova mode)
+8. `stylelint-rollouts.config.js` (repo root) — add SCSS path in alphabetical order
 
-Additional files if the spec requires them:
-- `common/Actions.mjs` + `common/Reducers.sys.mjs` — only if Redux state is needed
+**Customize panel (all four required):**
+9. `Base.jsx` — compute `mayHave{Name}Widget` and pass to both `<CustomizeMenu>` renders
+10. `CustomizeMenu.jsx` — forward the prop
+11. `ContentSection.jsx` — add switch case and `moz-toggle`
+12. `WidgetsManagementPanel.jsx` — add `moz-toggle`
+
+**Preferences and localization:**
+13. `AboutPreferences.sys.mjs` — register prefs, settings, and items in `_setupHomeGroup`
+14. `browser/locales/en-US/browser/newtab/newtab.ftl` — FTL strings for new tab
+15. `browser/locales/en-US/browser/preferences/preferences.ftl` — FTL string for about:preferences toggle
+
+**Testing:**
+16. `test/jest/content-src/components/Widgets/{Name}.test.jsx` — per-widget test file (the shared `Widgets.test.jsx` is for container tests only)
+
+#### Conditional files
+
+- `common/Actions.mjs` + `common/Reducers.sys.mjs` — only if the spec requires Redux state
 
 ### Step 3 — Scaffold
 
-After plan approval, implement all files end-to-end without stopping between
-edits. Do not pause to summarize progress or ask for confirmation mid-scaffold.
-Work through every file in the plan in sequence, replicating the patterns in
-`references/ExampleWidget/` and substituting values from the spec.
+After plan approval, implement all files end-to-end without stopping between edits. Work through every file in the plan in sequence, replicating the patterns in `references/ExampleWidget/` and substituting values from the spec.
 
-Only stop if you hit a genuine blocker (e.g. a file doesn't exist where expected,
-or the codebase structure differs from what the plan assumed). In that case,
-explain what you found and what decision is needed before continuing.
+Only stop if you hit a genuine blocker (e.g. a file doesn't exist where expected, or the codebase structure differs from what the plan assumed).
 
 ### Step 4 — Build and verify
 
-After scaffolding, the build artifacts must be regenerated:
+After scaffolding, regenerate build artifacts:
 
-1. `./mach newtab bundle` — compile SCSS and JS (**`./mach build faster` alone does NOT recompile SCSS**)
-2. `./mach build faster` — copy compiled artifacts to the build output
+1. `./mach newtab bundle` — compile SCSS and JS (`./mach build faster` alone does NOT recompile SCSS)
+2. `./mach build faster` — copy compiled artifacts to build output
 3. Commit the build artifacts: `css/activity-stream.css`, `css/nova/activity-stream.css`, `data/content/activity-stream.bundle.js`
 
 ### Step 5 — Follow-up
