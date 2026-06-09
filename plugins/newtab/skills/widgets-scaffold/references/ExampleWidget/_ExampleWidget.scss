@@ -4,7 +4,9 @@
 
 /* stylelint-disable stylelint-plugin-mozilla/use-design-tokens */
 
-.example-widget {
+// Root class is the css-class form of the registry id — no "-widget" suffix
+// (the shared `widget` class is applied alongside it). e.g. id "example".
+.example {
   @include newtab-card-style;
 
   border-radius: var(--border-radius-large);
@@ -13,6 +15,8 @@
   flex-direction: column;
   box-shadow: var(--box-shadow-card);
 
+  // Grid-row span per size. Add &.small-widget only if validSizes includes
+  // "small" (and the widget stays in the row, i.e. hasSidebar is false).
   &.medium-widget {
     grid-row: span 2;
   }
@@ -22,7 +26,7 @@
   }
 }
 
-.example-widget-title-wrapper {
+.example-title-wrapper {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -35,14 +39,14 @@
   }
 }
 
-.example-widget-context-menu-wrapper {
+.example-context-menu-wrapper {
   opacity: 0;
   pointer-events: none;
 }
 
-.example-widget:hover,
-.example-widget:focus-within {
-  .example-widget-context-menu-wrapper {
+.example:hover,
+.example:focus-within {
+  .example-context-menu-wrapper {
     opacity: 1;
     pointer-events: auto;
   }
@@ -50,7 +54,7 @@
 
 // Widget-specific styles below.
 // Use design system tokens only — no hardcoded colors or spacing values.
-.example-widget-body {
+.example-body {
   flex: 1;
   display: flex;
   flex-direction: column;

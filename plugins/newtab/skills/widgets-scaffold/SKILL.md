@@ -1,10 +1,29 @@
 ---
-description: Scaffolds a new Firefox New Tab widget with JSX, SCSS, prefs, telemetry, Widgets.jsx integration, and a draft test file. Use when the user wants to add a new widget to the New Tab page.
+description: Scaffolds a new Firefox New Tab widget with a registry entry, JSX, SCSS, prefs, telemetry, customize-panel + about:preferences integration, and a draft test file. Use when the user wants to add a new widget to the New Tab page.
 ---
 
 # New Tab Widget Scaffold
 
 Widgets live in `browser/extensions/newtab/content-src/components/Widgets/{Name}/`.
+
+The **Widget Registry** (`common/WidgetsRegistry.mjs`) is the single source of
+truth for every widget. Adding a widget is now mostly declarative: you add one
+registry entry plus one component-registry entry, and shared helpers
+(`isWidgetEnabled`, `resolveWidgetSize`, `resolveWidgetHasSidebar`,
+`getHideAllTargets`, `resolveWidgetOrder`) and shared UI (`useSizeSubmenu`,
+`MoveSubmenu`, `WidgetWrapper`) do the wiring that used to be hand-copied into
+`Widgets.jsx` and `Base.jsx`. Do **not** hand-wire enabled-logic, size
+derivation, hide-all, or the null-guard into those files anymore.
+
+## Naming convention (read first)
+
+The widget **id/key** and **telemetry name** must NOT contain the word
+"widget" — they already live under the `widgets.` pref namespace, so a `*Widget`
+suffix is redundant. Use `widgets.example.enabled`, telemetry `"example"` — not
+`widgets.exampleWidget.enabled` / `"example_widget"`. The Sports widget shipped
+with the redundant id `sportsWidget` and it caused a pref + telemetry bug that
+had to be fixed (its `telemetryName` is `"sports"`). Treat the Sports `*Widget`
+naming as legacy — do not copy it.
 
 ## Workflow
 
@@ -16,33 +35,76 @@ Ask the user to run the requirements script first:
 python3 {BASE_DIR}/scripts/gather_requirements.py
 ```
 
-The script asks all required questions and prints a widget spec summary.
+The script asks all required questions (including the registry fields:
+`telemetryName`, `order`, `validSizes`, `defaultSize`, `hasSidebar`, trainhop
+keys) and prints a widget spec plus a ready-to-paste `WIDGET_REGISTRY` entry.
 Wait for the user to paste that summary before proceeding.
 
 ### Step 2 — Plan
 
 Enter plan mode. Using the spec and the example in
-`references/ExampleWidget/`, propose the full list of files to
-create/modify before writing anything. Read `references/notes.md` for
-non-obvious requirements and gotchas.
+`references/ExampleWidget/`, propose the full list of files to create/modify
+before writing anything. Read `references/notes.md` for non-obvious requirements
+and gotchas.
 
-Files touched by every widget:
-1. `ActivityStream.sys.mjs` — register prefs (**do this first, then run `./mach build faster` before proceeding**)
-2. `Widgets/{Name}/{Name}.jsx` — new widget component. Add `PREF_NOVA_ENABLED = "nova.enabled"` and `PREF_{NAME}_SIZE = "widgets.{widgetKey}.size"` constants. Derive size as `prefs[PREF_{NAME}_SIZE] || "medium"`. After all hooks, add a `// @nova-cleanup(remove-gate)` comment followed by `if (!prefs[PREF_NOVA_ENABLED]) { return null; }` to gate the widget on Nova being enabled. Apply `col-4 ${widgetSize}-widget` unconditionally on the root element. Use the submenu pattern for resize (see notes.md — "Widget resize context menu"); do NOT use separate `<panel-item hidden={...}>` elements. Check `supportsSmallSize` from the spec — if `yes`, add `"small"` to the size map in the submenu.
-3. `Widgets/{Name}/_{Name}.scss` — widget styles. Add `&.medium-widget { grid-row: span 2; }` and `&.large-widget { grid-row: span 4; }` inside the root class. Add `&.small-widget { grid-row: span 1; }` only if `supportsSmallSize = yes`.
-4. `Widgets/Widgets.jsx` — import, enabled logic, null guard, JSX render
-5. `Widgets/_Widgets.scss` — add CSS class to `:has()` selector
-6. `test/jest/content-src/components/Widgets/{Name}.test.jsx` — create a dedicated test file for the new widget. The shared `Widgets.test.jsx` is for container/integration coverage only; per-widget tests live in their own file alongside the other widgets in that directory (e.g. `FocusTimer.test.jsx`, `Weather.test.jsx`)
-7. `content-src/styles/activity-stream.scss` — add `@import`
-8. `content-src/styles/nova/activity-stream.scss` — add `@import` (**required — without this, styles won't render in Nova mode**)
-9. `stylelint-rollouts.config.js` (repo root) — add the new widget's SCSS path in alphabetical order alongside the other widget entries
-10. `Base.jsx`, `CustomizeMenu.jsx`, `ContentSection.jsx`, `WidgetsManagementPanel.jsx` — Customize panel toggle (add prop to function signature, switch case, and `moz-toggle` in `WidgetsManagementPanel.jsx`)
-11. `AboutPreferences.sys.mjs` — register prefs, settings, and items in the Home group (`about:preferences#home`), set up in `_setupHomeGroup`
-12. `browser/locales/en-US/browser/newtab/newtab.ftl` — FTL strings for new tab
-13. `browser/locales/en-US/browser/preferences/preferences.ftl` — FTL string for `about:preferences` toggle
+The registry-centric core (do these first, in order):
 
-Additional files if the spec requires them:
-- `common/Actions.mjs` + `common/Reducers.sys.mjs` — only if Redux state is needed
+1. `common/WidgetsRegistry.mjs` — add the `WIDGET_REGISTRY` entry (next `order`
+   integer) and export the widget's pref-key constants
+   (`PREF_WIDGETS_{KEY}_ENABLED`, `PREF_{KEY}_SIZE`,
+   `PREF_WIDGETS_SYSTEM_{KEY}_ENABLED`). This replaces the old per-component
+   pref constants and the hand-wired enabled expressions — `isWidgetEnabled`
+   derives everything from the entry.
+2. `lib/ActivityStream.sys.mjs` — register the three prefs (**do this first,
+   then run `./mach build faster` before proceeding**). The size pref's `value`
+   is `""` (empty = "user hasn't chosen"; lets trainhop/`defaultSize` apply).
+3. `Widgets/{Name}/{Name}.jsx` — the widget component. Mirror
+   `references/ExampleWidget/ExampleWidget.jsx`:
+   - Look up its entry once: `const ENTRY = WIDGET_REGISTRY.find(w => w.id === "{key}")`.
+   - Derive size with `resolveWidgetSize(ENTRY, prefs)` — never read the size
+     pref directly.
+   - Accept the standard props: `dispatch`, `handleUserInteraction` (interactive
+     widgets only), `isMaximized`, `widgetsMayBeMaximized`, `widgetEnabledMap`.
+   - Resize submenu via the `useSizeSubmenu(handleChangeSize)` hook (do NOT
+     hand-roll the click listener). Gate the submenu on
+     `widgetsMayBeMaximized`. Include `"small"` only if `validSizes` has it.
+   - Reorder via `<MoveSubmenu widgetId="{key}" widgetEnabledMap={widgetEnabledMap} />`.
+   - Render its own `<article className="{css} widget col-4 ${widgetSize}-widget">`
+     root. Do **not** add a per-widget Nova gate — the container (`Widgets.jsx`)
+     renders `WIDGET_ROW_COMPONENTS` only in its Nova branch, so the widget already
+     mounts only under Nova; a `nova.enabled` early return here is redundant.
+     (Sports has one; it is legacy — do not copy it.)
+4. `Widgets/WidgetsComponentRegistry.jsx` — add the component to
+   `WIDGET_ROW_COMPONENTS`. If the spec has `hasSidebar: true`, also add a
+   sidebar component to `WIDGET_SIDEBAR_COMPONENTS` — see
+   `references/SidebarVariant.md` for that wiring.
+
+The supporting files (each widget still touches these):
+
+5. `Widgets/{Name}/_{Name}.scss` — styles. Add `&.medium-widget { grid-row: span 2; }`
+   and `&.large-widget { grid-row: span 4; }` inside the root class; add
+   `&.small-widget { grid-row: span 1; }` only if `validSizes` includes `"small"`.
+6. `content-src/styles/activity-stream.scss` — add `@import` of the widget SCSS.
+7. `stylelint-rollouts.config.js` (repo root) — add the SCSS path in alphabetical
+   order alongside the other widget entries.
+8. `lib/AboutPreferences.sys.mjs` + `browser/locales/en-US/browser/preferences/preferences.ftl`
+   — register the widget for `about:preferences#home` (see notes.md) with a
+   `home-prefs-{css-class}-header` string.
+9. Customize panel toggle (all required, see notes.md):
+   `Base.jsx` (compute `mayHave{Name}Widget` and pass it to **both**
+   `<CustomizeMenu>` renders) → `CustomizeMenu.jsx` (passthrough) →
+   `Nova/CustomizeMenu/WidgetsManagementPanel/WidgetsManagementPanel.jsx` (add
+   the `moz-toggle`) → `ContentSection.jsx` (classic path) →
+   `browser/locales/en-US/browser/newtab/newtab.ftl` (toggle label).
+10. `test/jest/content-src/components/Widgets/{Name}.test.jsx` — a dedicated Jest
+    test file. New tests go in Jest (not the legacy `test/unit/` Enzyme suite).
+
+Additional files only if the spec requires them:
+- `common/Actions.mjs` + `common/Reducers.sys.mjs` — only if Redux state is
+  needed. New `WIDGETS_*` action types must stay alphabetically sorted (a test
+  asserts it).
+- `lib/{Name}Feed.sys.mjs` — only if the widget needs a backend data feed (see
+  `WeatherFeed.sys.mjs`).
 
 ### Step 3 — Scaffold
 
@@ -59,9 +121,11 @@ explain what you found and what decision is needed before continuing.
 
 After scaffolding, the build artifacts must be regenerated:
 
-1. `./mach newtab bundle` — compile SCSS and JS (**`./mach build faster` alone does NOT recompile SCSS**)
+1. `./mach newtab bundle` — compile SCSS and JS (**`./mach build faster` alone
+   does NOT recompile SCSS**)
 2. `./mach build faster` — copy compiled artifacts to the build output
-3. Commit the build artifacts: `css/activity-stream.css`, `css/nova/activity-stream.css`, `data/content/activity-stream.bundle.js`
+3. Commit the build artifacts: `css/activity-stream.css`,
+   `css/nova/activity-stream.css`, `data/content/activity-stream.bundle.js`
 
 ### Step 5 — Follow-up
 
@@ -77,21 +141,24 @@ Then output the full enable instructions below:
 
 Set **all three** of these to `true`:
 - `browser.newtabpage.activity-stream.widgets.system.enabled` (parent gate for all widgets — defaults to `false`)
-- `browser.newtabpage.activity-stream.widgets.{widgetKey}.enabled`
-- `browser.newtabpage.activity-stream.widgets.system.{widgetKey}.enabled`
+- `browser.newtabpage.activity-stream.widgets.{key}.enabled`
+- `browser.newtabpage.activity-stream.widgets.system.{key}.enabled`
+
+(`{key}` is the registry id, with no `Widget` suffix.)
 
 **Option B — Nimbus trainhop**
 
 1. Install [Nimbus devtools](https://github.com/mozilla-extensions/nimbus-devtools/releases/tag/release%2Fv0.3.0)
 2. Choose "Feature configuration enrollment" on the left side
-3. Opt into an experiment for `newtabTrainhop` with:
+3. Opt into an experiment for `newtabTrainhop` with the entry's
+   `trainhopEnabledKey` (e.g. `{key}Enabled`):
 
 ```json
 {
   "type": "widgets",
   "payload": {
     "enabled": true,
-    "{widgetKey}Enabled": true
+    "{key}Enabled": true
   }
 }
 ```
