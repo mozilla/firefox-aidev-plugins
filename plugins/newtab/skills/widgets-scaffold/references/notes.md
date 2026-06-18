@@ -57,6 +57,32 @@ SportsWidget *does* have a per-widget Nova gate; that is legacy and must not be
 copied. (Older widgets like FocusTimer/Lists also carry conditional Nova logic
 because they predate the registry — new widgets don't need any of it.)
 
+## widgetEnabledMap in Widgets.jsx — the one spot still hand-wired
+
+The registry drives almost everything, but `Widgets.jsx` still builds a literal
+`widgetEnabledMap` object by hand (there is a `Bug 2034542` TODO above it to make
+this registry-driven). The render loop gates every widget on
+`widgetEnabledMap[id]`, so a widget that is missing from this map **silently never
+renders** even when its registry entry, `WIDGET_ROW_COMPONENTS` entry, and prefs
+are all correct — and `about:newtab` shows nothing with no error. This is the most
+common "I scaffolded a widget and it doesn't appear" cause.
+
+Add an entry mirroring `clocks`/`sportsWidget`:
+
+```js
+const widgetEnabledMap = {
+  // ...existing entries...
+  {key}: isWidgetEnabled(
+    WIDGET_REGISTRY.find(w => w.id === "{key}"),
+    prefs,
+    widgetsEnabled
+  ),
+};
+```
+
+Until Bug 2034542 lands, this is the documented exception to "do not hand-wire
+enabled-logic into `Widgets.jsx`".
+
 ## Size: resolveWidgetSize and the empty-string sentinel
 
 `resolveWidgetSize(entry, prefs)` applies priority:
