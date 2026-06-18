@@ -91,8 +91,12 @@ The registry-centric core (do these first, in order):
 
 The supporting files (each widget still touches these):
 
-6. `Widgets/{Name}/_{Name}.scss` — styles. Add `&.medium-widget { grid-row: span 2; }`
-   and `&.large-widget { grid-row: span 4; }` inside the root class; add
+6. `Widgets/{Name}/_{Name}.scss` — styles. `@include widget-base-style` on the
+   root (NOT `newtab-card-style`): it provides the shared per-size card height,
+   hover, transitions, and `position: relative`. Including `newtab-card-style`
+   directly leaves the card with no height, so a sparse or not-yet-wired widget
+   body collapses. Add `&.medium-widget { grid-row: span 2; }` and
+   `&.large-widget { grid-row: span 4; }` inside the root class; add
    `&.small-widget { grid-row: span 1; }` only if `validSizes` includes `"small"`.
 7. `content-src/styles/activity-stream.scss` — add `@import` of the widget SCSS.
 8. `stylelint-rollouts.config.js` (repo root) — add the SCSS path in alphabetical

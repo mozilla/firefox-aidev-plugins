@@ -7,13 +7,11 @@
 // Root class is the css-class form of the registry id — no "-widget" suffix
 // (the shared `widget` class is applied alongside it). e.g. id "example".
 .example {
-  @include newtab-card-style;
-
-  border-radius: var(--border-radius-large);
-  padding: var(--space-medium);
-  display: flex;
-  flex-direction: column;
-  box-shadow: var(--box-shadow-card);
+  // widget-base-style provides the shared card visuals AND the per-size card
+  // height (small/medium/large), hover, transitions, and position. Do NOT use
+  // newtab-card-style directly -- it has no height, so a sparse or not-yet-wired
+  // widget body collapses.
+  @include widget-base-style;
 
   // Grid-row span per size. Add &.small-widget only if validSizes includes
   // "small" (and the widget stays in the row, i.e. hasSidebar is false).
