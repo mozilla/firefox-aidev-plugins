@@ -78,26 +78,42 @@ The registry-centric core (do these first, in order):
    `WIDGET_ROW_COMPONENTS`. If the spec has `hasSidebar: true`, also add a
    sidebar component to `WIDGET_SIDEBAR_COMPONENTS` — see
    `references/SidebarVariant.md` for that wiring.
+5. `Widgets/Widgets.jsx` — add the widget's id to the hand-maintained
+   `widgetEnabledMap` object (mirror the `clocks`/`sportsWidget` entries):
+   `{key}: isWidgetEnabled(WIDGET_REGISTRY.find(w => w.id === "{key}"), prefs, widgetsEnabled)`.
+   **This is the one place the container is NOT yet registry-driven** (see the
+   `Bug 2034542` TODO above the map). The render loop gates every widget on
+   `widgetEnabledMap[id]`, so a widget missing from this map silently never
+   renders — even though its registry entry, component-registry entry, and prefs
+   are all correct. This is the single most common reason a freshly-scaffolded
+   widget shows nothing on `about:newtab`. (Until Bug 2034542 lands, "don't
+   hand-wire enabled-logic into Widgets.jsx" has this one exception.)
 
 The supporting files (each widget still touches these):
 
-5. `Widgets/{Name}/_{Name}.scss` — styles. Add `&.medium-widget { grid-row: span 2; }`
-   and `&.large-widget { grid-row: span 4; }` inside the root class; add
+6. `Widgets/{Name}/_{Name}.scss` — styles. `@include widget-base-style` on the
+   root (NOT `newtab-card-style`): it provides the shared per-size card height,
+   hover, transitions, and `position: relative`. Including `newtab-card-style`
+   directly leaves the card with no height, so a sparse or not-yet-wired widget
+   body collapses. Add `&.medium-widget { grid-row: span 2; }` and
+   `&.large-widget { grid-row: span 4; }` inside the root class; add
    `&.small-widget { grid-row: span 1; }` only if `validSizes` includes `"small"`.
-6. `content-src/styles/activity-stream.scss` — add `@import` of the widget SCSS.
-7. `stylelint-rollouts.config.js` (repo root) — add the SCSS path in alphabetical
+7. `content-src/styles/activity-stream.scss` — add `@import` of the widget SCSS.
+8. `stylelint-rollouts.config.js` (repo root) — add the SCSS path in alphabetical
    order alongside the other widget entries.
-8. `lib/AboutPreferences.sys.mjs` + `browser/locales/en-US/browser/preferences/preferences.ftl`
+9. `lib/AboutPreferences.sys.mjs` + `browser/locales/en-US/browser/preferences/preferences.ftl`
    — register the widget for `about:preferences#home` (see notes.md) with a
    `home-prefs-{css-class}-header` string.
-9. Customize panel toggle (all required, see notes.md):
+10. Customize panel toggle (all required, see notes.md):
    `Base.jsx` (compute `mayHave{Name}Widget` and pass it to **both**
    `<CustomizeMenu>` renders) → `CustomizeMenu.jsx` (passthrough) →
    `Nova/CustomizeMenu/WidgetsManagementPanel/WidgetsManagementPanel.jsx` (add
    the `moz-toggle`) → `ContentSection.jsx` (classic path) →
    `browser/locales/en-US/browser/newtab/newtab.ftl` (toggle label).
-10. `test/jest/content-src/components/Widgets/{Name}.test.jsx` — a dedicated Jest
+11. `test/jest/content-src/components/Widgets/{Name}.test.jsx` — a dedicated Jest
     test file. New tests go in Jest (not the legacy `test/unit/` Enzyme suite).
+    Note: `WidgetsRegistry.test.jsx` has hardcoded expected widget-order arrays —
+    adding an entry breaks them until you append the new id (in registry order).
 
 Additional files only if the spec requires them:
 - `common/Actions.mjs` + `common/Reducers.sys.mjs` — only if Redux state is

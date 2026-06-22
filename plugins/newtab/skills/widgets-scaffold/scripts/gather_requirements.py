@@ -254,6 +254,8 @@ def main():
     trainhopEnabledKey: "{trainhop_enabled}",
     trainhopSizeKey: "{trainhop_size}",
     trainhopSidebarKey: {sidebar_key_literal},
+    widgetsSettingsVisibleKey: "{widget_key}Visible",
+    widgetsSettingsEnabledKey: "{trainhop_enabled}",
   }},"""
     )
     print("\n  Pref-key constants to export from the same file:")
