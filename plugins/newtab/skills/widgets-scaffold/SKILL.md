@@ -36,7 +36,7 @@ Widget telemetry is fully generic and already defined once for all widgets in
 A new widget therefore adds **nothing** to `metrics.yaml` and requires **no**
 `./mach newtab channel-metrics-diff` run. It just emits the shared events with
 its own `telemetryName` as `widget_name` (impression via the intersection
-observer, interactions via `WIDGETS_USER_EVENT`, errors via `widgets.error`).
+observer, interactions via `WIDGETS_USER_EVENT`, errors via `widgets_error`).
 Only edit `metrics.yaml` if the widget needs a genuinely new event shape that
 the shared `widgets_*` events cannot express — which is rare. Never scaffold a
 per-widget `widgets.{key}.*` metric.
