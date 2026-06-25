@@ -25,6 +25,22 @@ with the redundant id `sportsWidget` and it caused a pref + telemetry bug that
 had to be fixed (its `telemetryName` is `"sports"`). Treat the Sports `*Widget`
 naming as legacy — do not copy it.
 
+## Telemetry (do NOT touch metrics.yaml)
+
+Widget telemetry is fully generic and already defined once for all widgets in
+`browser/components/newtab/metrics.yaml`: `widgets_impression`,
+`widgets_user_event`, `widgets_enabled`, `widgets_error`, and
+`widgets_container_action`. Every event is keyed by `widget_name` (your
+`telemetryName`) plus `widget_size`, `error_type`, `user_action`, etc.
+
+A new widget therefore adds **nothing** to `metrics.yaml` and requires **no**
+`./mach newtab channel-metrics-diff` run. It just emits the shared events with
+its own `telemetryName` as `widget_name` (impression via the intersection
+observer, interactions via `WIDGETS_USER_EVENT`, errors via `widgets_error`).
+Only edit `metrics.yaml` if the widget needs a genuinely new event shape that
+the shared `widgets_*` events cannot express — which is rare. Never scaffold a
+per-widget `widgets.{key}.*` metric.
+
 ## Workflow
 
 ### Step 1 — Gather requirements
