@@ -1,0 +1,6 @@
+*                              @mozilla/ai4dev
+
+# Code owners for specific plugins
+/plugins/figma/                @rocketsroger
+/plugins/ipprotection/         @msujaws
+/plugins/newtab/               @maxxcrawford
