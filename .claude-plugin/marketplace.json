@@ -16,6 +16,10 @@
     {
       "name": "figma",
       "source": "./plugins/figma"
+    },
+    {
+      "name": "tae",
+      "source": "./plugins/tae"
     }
   ]
 }
