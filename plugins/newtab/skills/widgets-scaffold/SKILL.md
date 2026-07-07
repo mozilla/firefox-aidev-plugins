@@ -90,9 +90,11 @@ The registry-centric core (do these first, in order):
      widgets only), `isMaximized`, `widgetsMayBeMaximized`, `widgetEnabledMap`.
    - Emit telemetry through the `useWidgetTelemetry({ dispatch, widget: ENTRY,
      widgetSize })` hook: attach the returned `impressionRef` to the widget's
-     root element and call `recordUserAction(action, { source })` for
-     interactions. Do **not** hand-build `WIDGETS_IMPRESSION` /
-     `WIDGETS_USER_EVENT` payloads or wire up your own `IntersectionObserver`.
+     root element and call `recordUserAction(action, { source, value })` for
+     interactions (`value` sets `action_value`; pass `size` to override the
+     reported `widget_size`, as the resize handler does). Do **not** hand-build
+     `WIDGETS_IMPRESSION` / `WIDGETS_USER_EVENT` payloads or wire up your own
+     `IntersectionObserver`.
    - Render the shared `<WidgetMenuFooter>` as the last child of the menu's
      `<panel-list>`; it owns the common trailing block in a fixed order
      (divider, Change size, Move, Hide widget, Learn more — Learn more opens in

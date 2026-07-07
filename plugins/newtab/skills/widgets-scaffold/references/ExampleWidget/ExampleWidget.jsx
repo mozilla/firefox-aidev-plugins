@@ -48,9 +48,11 @@ function ExampleWidget({
   // Shared telemetry hook. Do NOT hand-build WIDGETS_IMPRESSION /
   // WIDGETS_USER_EVENT payloads or wire up your own IntersectionObserver:
   // attach `impressionRef` to the widget root for the one-shot impression, and
-  // call `recordUserAction(action, { source })` for interactions. `widget` is
-  // the registry entry; its `telemetryName` becomes `widget_name`. The hook
-  // also returns `recordImpression`, `recordEnabled`, and `recordError`.
+  // call `recordUserAction(action, { source, value })` for interactions
+  // (`value` sets `action_value`; pass `size` to override the reported
+  // `widget_size`). `widget` is the registry entry; its `telemetryName`
+  // becomes `widget_name`. The hook also returns `recordImpression`,
+  // `recordEnabled`, and `recordError`.
   const { impressionRef, recordUserAction } = useWidgetTelemetry({
     dispatch,
     widget: EXAMPLE_ENTRY,
@@ -81,6 +83,9 @@ function ExampleWidget({
             data: { name: EXAMPLE_ENTRY.sizePref, value: size },
           })
         );
+        // `value` is action_value; `size` overrides the reported widget_size.
+        // For a resize they're the new size, but they are distinct fields —
+        // without `size` the event would report the pre-change widget_size.
         recordUserAction(USER_ACTION_TYPES.CHANGE_SIZE, {
           source: "context_menu",
           value: size,
@@ -130,9 +135,9 @@ function ExampleWidget({
                 what drifts out of sync (see Bug 2046045 / D306294). */}
             <WidgetMenuFooter
               dispatch={dispatch}
-              widgetId="example"
+              widgetId={EXAMPLE_ENTRY.id}
               widgetEnabledMap={widgetEnabledMap}
-              widgetName="example"
+              widgetName={EXAMPLE_ENTRY.telemetryName}
               enabledPref={EXAMPLE_ENTRY.enabledPref}
               widgetSize={widgetSize}
               learnMoreL10nId="newtab-example-menu-learn-more"
