@@ -26,11 +26,11 @@ Wait for the user to confirm it is safe to continue.
 
 ### 3. File a bug
 
-Read the major version from `browser/config/version.txt` (e.g. `147`), then run:
+Use the `TARGET_VERSION` (release target) from the orchestrator — see SKILL.md → "Determine the train-hop target version". Then run:
 
 ```bash
 python3 <skill-scripts-dir>/file_bug.py \
-  --summary "Update locales for Firefox MAJOR_VERSION train-hop" \
+  --summary "Update locales for Firefox TARGET_VERSION train-hop" \
   --blocks META_BUG_NUMBER
 ```
 
@@ -41,7 +41,7 @@ Omit `--blocks` if no meta bug number is available. Note the printed bug ID.
 ```bash
 git checkout -b bug-BUG_NUMBER-update-locales-trainhop
 ./mach lint browser/extensions/newtab/
-git commit browser/extensions/newtab/ -m "Bug BUG_NUMBER - Update locales for Firefox MAJOR_VERSION train-hop r?#home-newtab-reviewers"
+git commit browser/extensions/newtab/ -m "Bug BUG_NUMBER - Update locales for Firefox TARGET_VERSION train-hop r?#home-newtab-reviewers"
 moz-phab submit
 ```
 

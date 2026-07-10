@@ -6,11 +6,11 @@ Files the Bugzilla meta bug that tracks the full train-hop release. All other bu
 
 ### 1. File the meta bug
 
-Read the major version from `browser/config/version.txt` (e.g. `147` from `147.0a1`), then run:
+Use the `TARGET_VERSION` (the release-target version) determined by the orchestrator — see SKILL.md → "Determine the train-hop target version". If running this step standalone, default to `(Nightly major from browser/config/version.txt) − 2` and confirm with the user. Then run:
 
 ```bash
 python3 <skill-scripts-dir>/file_bug.py \
-  --summary "[meta] Firefox MAJOR_VERSION train-hop metabug" \
+  --summary "[meta] Firefox TARGET_VERSION train-hop metabug" \
   --type task \
   --keywords meta
 ```
@@ -19,7 +19,7 @@ The script prompts for your Bugzilla API key and prints the new bug ID. Note it 
 
 ## Expected Result
 
-The meta bug is visible at `https://bugzilla.mozilla.org/show_bug.cgi?id=BUG_ID` with summary `[meta] Firefox MAJOR_VERSION train-hop metabug` and the `meta` keyword.
+The meta bug is visible at `https://bugzilla.mozilla.org/show_bug.cgi?id=BUG_ID` with summary `[meta] Firefox TARGET_VERSION train-hop metabug` and the `meta` keyword.
 
 ## Troubleshooting
 

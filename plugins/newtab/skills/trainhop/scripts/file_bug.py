@@ -2,8 +2,10 @@
 """
 Files a Bugzilla bug for a New Tab train-hop step.
 
-Prompts for the Bugzilla API key at runtime.
-Prints the new bug ID to stdout on success.
+Reads the Bugzilla API key from the BUGZILLA_API_KEY env var (or the
+credentials file at ~/.mozbuild/trainhop.env). The key must be set up ahead of
+time — this script never prompts for it. If it is missing, it exits with a
+pointer to the setup doc. Prints the new bug ID to stdout on success.
 
 Usage:
   python3 file_bug.py --summary "Update locales for Firefox 147 train-hop"
@@ -12,12 +14,34 @@ Usage:
 """
 
 import argparse
-import getpass
 import json
 import os
 import sys
 import urllib.error
 import urllib.request
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _env import load_env, env_file_path
+
+SETUP_DOC = "https://mozilla-hub.atlassian.net/wiki/x/QoA4qg"
+
+
+def resolve_api_key():
+    """Return a non-empty Bugzilla API key, or exit with setup instructions.
+
+    The key is never prompted for — it must already be set up in the
+    credentials file (or environment). An empty value counts as missing.
+    """
+    load_env()
+    api_key = os.environ.get("BUGZILLA_API_KEY", "").strip()
+    if api_key:
+        return api_key
+    path = env_file_path()
+    sys.stderr.write(
+        f"Bugzilla API key not set. Add a non-empty BUGZILLA_API_KEY line to "
+        f"{path}.\nSetup instructions: {SETUP_DOC}\n"
+    )
+    sys.exit(2)
 
 
 def main():
@@ -31,7 +55,7 @@ def main():
     parser.add_argument("--blocks", type=int, help="Bug number that this bug blocks")
     args = parser.parse_args()
 
-    api_key = os.environ.get("BUGZILLA_API_KEY") or getpass.getpass("Bugzilla API key: ")
+    api_key = resolve_api_key()
 
     payload = {
         "api_key": api_key,

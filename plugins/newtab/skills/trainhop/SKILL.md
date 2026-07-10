@@ -1,6 +1,6 @@
 ---
 name: trainhop
-description: Runs the New Tab train-hop release workflow for all automated steps: metabug, locales, metrics, Nimbus recipe, Confluence page, QA ticket, and version bump. Use when asked to "run the train-hop", "start a train-hop", or "do a train-hop". Do NOT use for individual steps like bumping the version or updating locales alone — those have their own skills.
+description: Runs the New Tab train-hop release workflow for all automated steps: metabug, locales, metrics, Nimbus recipe, Confluence page, and QA ticket. Use when asked to start a train-hop. Do NOT use for individual steps like updating locales alone — those have their own skills.
 argument-hint: "[bug-number] (optional)"
 disable-model-invocation: true
 ---
@@ -9,80 +9,61 @@ disable-model-invocation: true
 
 ## Before Starting
 
-**Step 1: Ask the user which phase to run** (present as a numbered list):
+**Step 1 — Pick the phase.** Ask (numbered list):
 
 > Which steps would you like to run?
 >
-> **1. Full workflow** — all automated steps from start to finish
-> **2. Prep only** — steps 1–3: filings (metabug + Confluence page + QA ticket), update locales, update metrics (run before the XPI is cut)
-> **3. Post-XPI** — steps 4–6: Nimbus recipe, update Confluence page with real QA ticket reference, version bump
-> **4. Custom** — specify which numbered steps to include
+> **1. Full workflow** — all steps, start to finish
+> **2. Prep only** — steps 1–3 (metabug, locales, metrics), run before the XPI is cut
+> **3. Post-XPI** — steps 4–5 (Nimbus recipe, Confluence page + QA ticket)
+> **4. Custom** — specify which step numbers to include
 
-Wait for the user's answer before continuing.
+**Step 2 — Resolve, ask, confirm.** Resolve what you can automatically, ask the user only for the rest, then present the plan and wait for a single confirmation.
 
-**Step 2: Collect inputs** — ask for the following based on the selected phase:
+*Resolve automatically:*
+- **`TARGET_VERSION`** — read the Nightly major from `browser/config/version.txt`; the release target is `Nightly − 2` (e.g. `154` → `152`). This labels the meta bug, per-step bugs, QA ticket, and Confluence title — **not** the Nightly version. Use it everywhere; don't re-derive it per step.
+- **Conductor** — defaults to the signed-in user (`${MCP}atlassianUserInfo`).
+- **QA contact** — defaults to Valentin Bandac (`6310ac8255b0a9e29f1af16d`).
+- **accountIds** — resolve names → accountIds with `${MCP}lookupJiraAccountId`.
 
-- If the phase includes step 1 (Confluence page + QA ticket):
-  - **XPI cut date** (e.g. `2026-05-13`)
-  - **QA handoff date** (e.g. `2026-05-14`)
-  - **QA sign-off date** (e.g. `2026-05-18`) — also used as the Jira ticket's due date
-  - **Release date** (e.g. `2026-05-19`)
-  - **Release Management contact** — name + Atlassian accountId (check https://whattrainisitnow.com for the release owner; resolve accountId via `mcp__atlassian__lookupJiraAccountId`)
-  - **QA contact** — name + Atlassian accountId (default: Valentin Bandac, accountId `6310ac8255b0a9e29f1af16d`)
-  - **Conductor** — name + Atlassian accountId (typically the person running this workflow)
-- If the phase includes step 4 (Nimbus recipe): **Ship task URL** from ShipIt
+*Ask the user (only what the chosen phase needs):*
+- **Target version** — confirm the computed `Nightly − 2` default, or take an override.
+- If step 4 is included — **Ship task URL** (from ShipIt).
+- If step 5 is included:
+  - **Dates**: XPI cut, QA handoff, QA sign-off (= the Jira due date), and the staged **Release** dates — 50% and 100% (usually consecutive days).
+  - **Rel Man** — name only (check https://whattrainisitnow.com/release/?version=release if unknown).
+  - **Conductor & QA contact** — default to you (the signed-in user) and Valentin Bandac; confirm, or name someone else.
 
-**Step 3: Present the plan** — list the steps that will be executed and wait for confirmation before proceeding.
+Then show the resolved target version and the exact steps to run, and wait for one confirmation before proceeding.
 
 ## Pre-conditions
 
-Before running any steps, verify:
+Run these checks at the start — don't ask the user to verify them. If something is off, explain it in plain language and wait.
 
-- Working tree is clean: `git status` shows no uncommitted changes
-- On `main` branch and up to date: `git pull`
-- Bugzilla API key is available (`BUGZILLA_API_KEY` env var or interactive prompt — see `references/credentials.md`)
-- The **Atlassian MCP plugin** is installed and authenticated — used for both the Jira ticket and the Confluence page. Install from the official Anthropic marketplace with `/plugin install atlassian@claude-plugins-official` followed by `/reload-plugins`. The plugin runs an OAuth flow on first use; no API token to manage. See `references/credentials.md` for full setup, troubleshooting, and the legacy API-token fallback.
+1. **In the Firefox checkout.** Confirm `browser/config/version.txt` exists in the working directory. If not, the workflow is running from the wrong place — ask the user to start it from their local Firefox source checkout (every step operates there).
+2. **Clean tree on `main`.** Run `git status --porcelain` and `git rev-parse --abbrev-ref HEAD`. If there are uncommitted changes or the branch isn't `main`, stop and say so plainly (e.g. "there are unsaved changes in the Firefox repo" / "you're on branch X, not `main`") and ask how to proceed — do not run on a dirty tree. Once clean and on `main`, run `git pull` to get up to date.
+3. **Bugzilla API key.** The key must be a non-empty `BUGZILLA_API_KEY` line in `~/.mozbuild/trainhop.env`. Check with:
+   ```bash
+   grep -qE '^BUGZILLA_API_KEY=.+' ~/.mozbuild/trainhop.env && echo ok
+   ```
+   If that prints `ok`, continue. If not (file missing or value empty), the key isn't set up: point the user to the setup doc — https://mozilla-hub.atlassian.net/wiki/x/QoA4qg — and **stop** until they've created the file in their own terminal, then re-check. **Never ask for the key in the chat, prompt for it, or write it yourself** — the key must never enter the Claude session. You only verify it's present.
+4. **Atlassian MCP** (only needed for step 5). The Atlassian MCP plugin must be installed and authenticated: `/plugin install atlassian@claude-plugins-official` then `/reload-plugins` (OAuth on first use, no token). See `references/credentials.md` for setup and the `${MCP}` tool-prefix note.
 
 ## Steps
 
 Stop and report to the user if any step fails. Do not proceed past a failed step without explicit instruction.
 
-### 1. File meta bug, Confluence page, and QA ticket
-
-This is a three-substep flow. Do them in order:
-
-#### 1a. Create the meta bug
+### 1. Create meta bug
 
 Follow `references/create-metabug.md`. Note the returned bug number — pass it to all subsequent steps.
 
-#### 1b. Create the Confluence page (with `QA-TBD` placeholder)
-
-Follow `references/create-confluence-page.md`, passing:
-- The meta bug number from step 1a (full URL form)
-- A placeholder for the QA ticket (`QA-TBD`) — the page will be updated in step 5
-- All four dates (XPI Cut, QA Handoff, QA Sign-off, Release) as Unix epoch milliseconds for ADF `date` nodes
-- Rel Man, QA, and Conductor as ADF `mention` nodes (name + accountId)
-
-Note the returned **page ID** and **page URL**.
-
-#### 1c. File the QA ticket
-
-Follow `references/file-qa-ticket.md`, passing:
-- The meta bug URL from step 1a
-- The Confluence page URL from step 1b
-- The QA sign-off date (becomes the Jira ticket's due date)
-- The QA contact's accountId (for `assignee_account_id`)
-- The conductor's name (for `customfield_10138` Feature Owner)
-
-Note the returned **QA ticket key** (e.g. `QA-5234`).
-
 ### 2. Update locales
 
-Follow `references/update-locales.md`, passing the meta bug number from step 1a.
+Follow `references/update-locales.md`, passing the meta bug number from step 1.
 
 ### 3. Update metrics
 
-Follow `references/update-metrics.md`, passing the meta bug number from step 1a.
+Follow `references/update-metrics.md`, passing the meta bug number from step 1.
 
 ### 4. Generate the Nimbus recipe
 
@@ -92,13 +73,34 @@ Follow `references/update-metrics.md`, passing the meta bug number from step 1a.
 
 Use the Ship task URL collected in the Inputs section. Display the full output.
 
-### 5. Update the Confluence page with the real QA ticket reference
+### 5. Create Confluence page and file QA ticket
 
-Use `mcp__atlassian__updateConfluencePage` to replace the `QA-TBD` placeholder on the page from step 1b with a real link to the ticket key from step 1c. Pass `versionMessage: "Fill in QA ticket reference (QA-XXXX)"`.
+This is a three-substep flow. Do them in order:
 
-### 6. Bump minor version
+#### 5a. Create the Confluence page (with `QA-TBD` placeholder)
 
-Follow `references/bump-version.md`, passing the meta bug number from step 1a.
+Follow `references/create-confluence-page.md`, passing:
+- The meta bug number from step 1 (full URL form)
+- A placeholder for the QA ticket (`QA-TBD`) — the page will be updated in step 5c
+- The dates (XPI Cut, QA Handoff, QA Sign-off, Release 50%/100%) as `YYYY-MM-DD` for HTML `<time>` nodes
+- Rel Man, QA, and Conductor as HTML `<span data-type="mention">` nodes (name + accountId)
+
+Note the returned **page ID** and **page URL**.
+
+#### 5b. File the QA ticket
+
+Follow `references/file-qa-ticket.md`, passing:
+- The meta bug URL from step 1
+- The Confluence page URL from step 5a
+- The QA sign-off date (becomes the Jira ticket's due date)
+- The QA contact's accountId (for `assignee_account_id`)
+- The conductor's name (for `customfield_10138` Feature Owner)
+
+Note the returned **QA ticket key** (e.g. `QA-XXXX`).
+
+#### 5c. Update the Confluence page with the real QA ticket reference
+
+Use `${MCP}updateConfluencePage` to replace the `QA-TBD` placeholder with a real link to the ticket key from 5b. Pass `versionMessage: "Fill in QA ticket reference (QA-XXXX)"`.
 
 ## Troubleshooting
 
@@ -112,4 +114,4 @@ Report which step failed and its error output. Do not continue without explicit 
 Re-prompt the user — these calls (Jira ticket creation, Confluence page creation/update) are intentional and on the user's behalf.
 
 **Atlassian MCP unavailable**
-The `scripts/file_jira_ticket.py` and `scripts/create_confluence_page.py` Python scripts are kept as a legacy fallback. They require `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`, and `ATLASSIAN_NAME` env vars and emit the older plain-text Confluence template (no date macros, no `@mention`s, no QA Sign-off, no Conductor row).
+Create the Confluence page and QA ticket manually in the UI by cloning a recent one — see the "If the Atlassian MCP is unavailable" notes in `references/create-confluence-page.md` and `references/file-qa-ticket.md`.

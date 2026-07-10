@@ -1,24 +1,27 @@
 # Credential Setup
 
-The train-hop workflow has two paths for Jira/Confluence:
+Before running a train-hop you only need to set up **one** thing: a **Bugzilla API key**. Jira and Confluence sign you in automatically through the Atlassian plugin — no key to manage (see [Atlassian (Jira & Confluence)](#atlassian-jira--confluence) below).
 
-- **Preferred** — the Atlassian MCP plugin (OAuth, no token to manage). See [Atlassian MCP plugin](#atlassian-mcp-plugin) below.
-- **Legacy** — direct REST API calls from the Python scripts in `scripts/`, which require an email + API token. See [Atlassian API token (legacy)](#atlassian-api-token-legacy) below.
+## Set up your Bugzilla API key (one time)
 
-Bugzilla still uses a personal API key (no MCP equivalent yet).
+**Full walkthrough:** https://mozilla-hub.atlassian.net/wiki/x/QoA4qg
 
-## Bugzilla API Key
+In short: generate a key at https://bugzilla.mozilla.org (your name → **Preferences** → **API Keys**), then save it as a single non-empty line in `~/.mozbuild/trainhop.env`:
 
-Used by `scripts/file_bug.py` to file the meta bug.
+```
+BUGZILLA_API_KEY=your_key_here
+```
 
-1. Go to https://bugzilla.mozilla.org and sign in
-2. Click your name → **Preferences** → **API Keys**
-3. Enter a description (e.g. "train-hop automation") and click **Generate Key**
-4. Copy the key. Either export it as `BUGZILLA_API_KEY` in your shell (recommended: store in an untracked file like `.mozconfig-env` at the repo root and `set -a; source .mozconfig-env; set +a` before running the workflow), or let the script prompt for it interactively.
+Do this in your own terminal or editor — **never paste the key into the Claude session** (chat or the `!` prefix), because anything typed there is saved in the conversation log. The train-hop only reads the file; it never asks for the key in-session. If the key is missing when a step runs, the skill points you to the doc above and stops.
 
-## Atlassian MCP plugin
+### Notes (advanced)
 
-The Atlassian MCP plugin is published in the **official Anthropic marketplace** (`claude-plugins-official`), which is registered automatically when Claude Code starts. See the [Discover plugins → External integrations](https://code.claude.com/docs/en/discover-plugins#external-integrations) docs for the full list.
+- `~/.mozbuild` is Firefox's per-user directory — it already exists once you have a working local Firefox, keeps the key out of every repo, and survives plugin updates. `scripts/trainhop.env.example` is a template.
+- An exported `BUGZILLA_API_KEY` overrides the file (handy for a one-off): `BUGZILLA_API_KEY=... python3 file_bug.py`.
+
+## Atlassian (Jira & Confluence)
+
+Jira and Confluence are handled by the **Atlassian MCP plugin** — you sign in once via OAuth and there's no API key to manage. It is published in the **official Anthropic marketplace** (`claude-plugins-official`), which is registered automatically when Claude Code starts. See the [Discover plugins → External integrations](https://code.claude.com/docs/en/discover-plugins#external-integrations) docs for the full list.
 
 ### Install
 
@@ -45,29 +48,27 @@ If Claude Code reports the plugin is not found, refresh the marketplace first an
 
 On first use, the plugin walks you through an OAuth flow against your Mozilla Atlassian workspace (`mozilla-hub.atlassian.net`). Approve the requested scopes (read/write for Jira and Confluence). No tokens are stored locally — Claude Code manages the OAuth session.
 
+### Tool prefix (`${MCP}`)
+
+Throughout this skill, **`${MCP}`** stands for the Atlassian MCP tool prefix. Resolve it once and substitute it into every `${MCP}<tool>` name (e.g. `${MCP}createJiraIssue`):
+
+- **Official plugin** (the recommended install above): `mcp__plugin_atlassian_atlassian__`
+- **Directly-configured MCP server** named `atlassian` (via `claude mcp add` / settings.json): `mcp__atlassian__`
+- **Other / unsure**: list the available `mcp__*atlassian*` tools and use whatever prefix appears.
+
+The tool *base names* — `createConfluencePage`, `createJiraIssue`, `updateConfluencePage`, `lookupJiraAccountId`, `atlassianUserInfo`, `getJiraIssue`, `searchConfluenceUsingCql` — are stable; only the prefix varies. A newly-added MCP server may only appear after `/reload-plugins` or a CLI restart.
+
 ### Verify
 
-After install + reload, the `mcp__atlassian__*` tools should be available. A quick smoke test from Claude:
+After install + reload, the `${MCP}*` tools should be available. A quick smoke test from Claude:
 
-> List the spaces I can access in Confluence (use `mcp__atlassian__getConfluenceSpaces` with `cloudId: mozilla-hub.atlassian.net`).
+> List the spaces I can access in Confluence (use `${MCP}getConfluenceSpaces` with `cloudId: mozilla-hub.atlassian.net`).
 
 You should see "Firefox Product Space" (key `FPS`, id `12484637`) in the response.
 
 ### Troubleshooting
 
-- **`mcp__atlassian__*` tools missing after install**: run `/reload-plugins`. If still missing, check `/plugin` → Errors tab.
+- **`${MCP}*` tools missing after install**: run `/reload-plugins`. If still missing, check `/plugin` → Errors tab.
 - **OAuth fails**: confirm you have permission on `mozilla-hub.atlassian.net`. The marketplace plugin's docs (linked from `/plugin` → Discover → atlassian) cover re-auth.
 - **MCP call blocked by the auto-mode classifier**: this is a Claude Code permission prompt, not an MCP failure. Approve the call to proceed.
-
-## Atlassian API token (legacy)
-
-Only needed if you're falling back to the Python scripts in `scripts/`. The MCP path above is preferred.
-
-**Email**: your Mozilla email address (e.g. `you@mozilla.com`)
-
-**API Token**:
-1. Go to https://id.atlassian.com/manage-profile/security/api-tokens
-2. Click **Create API token**
-3. Enter a label (e.g. "train-hop") and copy the token
-
-Export as `ATLASSIAN_EMAIL`, `ATLASSIAN_API_TOKEN`, and `ATLASSIAN_NAME` (your Feature Owner display name). As with the Bugzilla key, an untracked `.mozconfig-env` file at the repo root works well.
+- **MCP entirely unavailable**: create the Jira ticket and Confluence page manually in the UI (clone a recent one) — see the "If the Atlassian MCP is unavailable" notes in `references/file-qa-ticket.md` and `references/create-confluence-page.md`.
