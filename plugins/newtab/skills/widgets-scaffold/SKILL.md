@@ -10,10 +10,12 @@ The **Widget Registry** (`common/WidgetsRegistry.mjs`) is the single source of
 truth for every widget. Adding a widget is now mostly declarative: you add one
 registry entry plus one component-registry entry, and shared helpers
 (`isWidgetEnabled`, `resolveWidgetSize`, `resolveWidgetHasSidebar`,
-`getHideAllTargets`, `resolveWidgetOrder`) and shared UI (`useSizeSubmenu`,
-`MoveSubmenu`, `WidgetWrapper`) do the wiring that used to be hand-copied into
-`Widgets.jsx` and `Base.jsx`. Do **not** hand-wire enabled-logic, size
-derivation, hide-all, or the null-guard into those files anymore.
+`getHideAllTargets`, `resolveWidgetOrder`), shared UI (`WidgetMenuFooter`,
+`SizeSubmenu`, `MoveSubmenu`, `WidgetWrapper`), and the shared
+`useWidgetTelemetry` hook do the wiring that used to be hand-copied into
+`Widgets.jsx`, `Base.jsx`, and every widget's menu and telemetry. Do **not**
+hand-wire enabled-logic, size derivation, hide-all, the null-guard, the menu
+footer, or telemetry payloads anymore.
 
 ## Naming convention (read first)
 
@@ -34,9 +36,14 @@ Widget telemetry is fully generic and already defined once for all widgets in
 `telemetryName`) plus `widget_size`, `error_type`, `user_action`, etc.
 
 A new widget therefore adds **nothing** to `metrics.yaml` and requires **no**
-`./mach newtab channel-metrics-diff` run. It just emits the shared events with
-its own `telemetryName` as `widget_name` (impression via the intersection
-observer, interactions via `WIDGETS_USER_EVENT`, errors via `widgets_error`).
+`./mach newtab channel-metrics-diff` run. It emits the shared events through the
+`useWidgetTelemetry({ dispatch, widget, widgetSize })` hook, which returns
+`impressionRef` (attach to the widget root — fires `widgets_impression` once via
+its own IntersectionObserver), `recordUserAction(action, { source, value })`
+(`widgets_user_event`), `recordEnabled` (`widgets_enabled`), `recordImpression`
+(manual one-shot), and `recordError` (`widgets_error`). Do NOT hand-build these
+payloads or wire up your own observer — the hook keys every event on the
+registry entry's `telemetryName` for you.
 Only edit `metrics.yaml` if the widget needs a genuinely new event shape that
 the shared `widgets_*` events cannot express — which is rare. Never scaffold a
 per-widget `widgets.{key}.*` metric.
@@ -81,10 +88,25 @@ The registry-centric core (do these first, in order):
      pref directly.
    - Accept the standard props: `dispatch`, `handleUserInteraction` (interactive
      widgets only), `isMaximized`, `widgetsMayBeMaximized`, `widgetEnabledMap`.
-   - Resize submenu via the `useSizeSubmenu(handleChangeSize)` hook (do NOT
-     hand-roll the click listener). Gate the submenu on
-     `widgetsMayBeMaximized`. Include `"small"` only if `validSizes` has it.
-   - Reorder via `<MoveSubmenu widgetId="{key}" widgetEnabledMap={widgetEnabledMap} />`.
+   - Emit telemetry through the `useWidgetTelemetry({ dispatch, widget: ENTRY,
+     widgetSize })` hook: attach the returned `impressionRef` to the widget's
+     root element and call `recordUserAction(action, { source, value })` for
+     interactions (`value` sets `action_value`; pass `size` to override the
+     reported `widget_size`, as the resize handler does). Do **not** hand-build
+     `WIDGETS_IMPRESSION` / `WIDGETS_USER_EVENT` payloads or wire up your own
+     `IntersectionObserver`.
+   - Render the shared `<WidgetMenuFooter>` as the last child of the menu's
+     `<panel-list>`; it owns the common trailing block in a fixed order
+     (divider, Change size, Move, Hide widget, Learn more — Learn more opens in
+     a new tab). Put widget-specific items **above** it. Pass the Change size
+     submenu via the `sizeSubmenu` prop as `<SizeSubmenu submenuId=...
+     sizes={[...]} checkedSize={widgetSize} onChangeSize={handleChangeSize} />`,
+     gated on `widgetsMayBeMaximized` (pass `null` otherwise); include `"small"`
+     only if `validSizes` has it. Do **not** hand-roll the size submenu,
+     `MoveSubmenu`, the Hide item, or the Learn more item — that hand-rolled
+     footer is exactly what drifted out of sync (Bug 2046045 / D306294). The
+     footer's `onLearnMore` is only for the extra `learn_more` telemetry; it
+     dispatches `OPEN_LINK` (with `where: "tab"`) itself.
    - Render its own `<article className="{css} widget col-4 ${widgetSize}-widget">`
      root. Do **not** add a per-widget Nova gate — the container (`Widgets.jsx`)
      renders `WIDGET_ROW_COMPONENTS` only in its Nova branch, so the widget already

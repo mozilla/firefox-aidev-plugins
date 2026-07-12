@@ -204,39 +204,67 @@ with no messages after it is a lint error (GC04).
 Never invent user-facing string values — copy comes from a copywriter. Wait for
 the literal text before adding the message.
 
-## Widget resize context menu — use the useSizeSubmenu hook
+## Context menu footer — use WidgetMenuFooter + SizeSubmenu
 
-The resize submenu is a `<panel-item submenu>` containing a `<panel-list>` of
-size `<panel-item type="checkbox">` rows. Wire its clicks with the shared
-`useSizeSubmenu(handleChangeSize)` hook from `content-src/lib/utils`:
-
-```jsx
-const sizeSubmenuRef = useSizeSubmenu(handleChangeSize);
-// ...
-<panel-list ref={sizeSubmenuRef} slot="submenu" id="{css-class}-size-submenu">
-```
-
-Do NOT hand-roll a `useEffect` + `composedPath()` click listener — that's exactly
-what the hook now encapsulates. React's synthetic `onClick` does not cross the
-`panel-list` shadow-DOM boundary, which is why the hook listens at the root.
-
-Gate the submenu on `widgetsMayBeMaximized`. Build the size list from the entry's
-`validSizes` — include `"small"` only when it is present.
-
-## Widget reorder — the MoveSubmenu component
-
-Widgets can be reordered. Render the shared component in the context menu, before
-Hide/Learn more:
+The trailing block of every widget menu is shared. Render `<WidgetMenuFooter>` as
+the last child of the menu's `<panel-list>`, with widget-specific items above it.
+It renders, in a fixed order: a divider, Change size, Move, Hide widget, and Learn
+more (which it opens in a **new tab**).
 
 ```jsx
-import { MoveSubmenu } from "../MoveSubmenu";
+import { SizeSubmenu } from "../SizeSubmenu";
+import { WidgetMenuFooter } from "../WidgetMenuFooter";
 // ...
-<MoveSubmenu widgetId="{key}" widgetEnabledMap={widgetEnabledMap} />
+<panel-list id="{css-class}-context-menu">
+  {/* widget-specific items go here, ABOVE the footer */}
+  <WidgetMenuFooter
+    dispatch={dispatch}
+    widgetId="{key}"
+    widgetEnabledMap={widgetEnabledMap}
+    widgetName="{telemetryName}"
+    enabledPref={ENTRY.enabledPref}
+    widgetSize={widgetSize}
+    learnMoreL10nId="newtab-{css-class}-menu-learn-more"
+    onLearnMore={handleLearnMore}
+    sizeSubmenu={
+      widgetsMayBeMaximized ? (
+        <SizeSubmenu
+          submenuId="{css-class}-size-submenu"
+          sizes={["medium", "large"]}
+          checkedSize={widgetSize}
+          onChangeSize={handleChangeSize}
+        />
+      ) : null
+    }
+  />
+</panel-list>
 ```
 
-It reads/writes the `widgets.order` pref via `resolveWidgetOrder`, renders nothing
-when the widget can't move, and (like the size submenu) listens at the panel-list
-root for `data-move-dir` clicks. You don't write any order logic yourself.
+`SizeSubmenu` owns the resize submenu — it uses the `useSizeSubmenu` hook
+internally, so you no longer wire `sizeSubmenuRef` yourself, and you must NOT
+hand-roll a `useEffect` + `composedPath()` listener (React's synthetic `onClick`
+does not cross the `panel-list` shadow-DOM boundary). Gate it on
+`widgetsMayBeMaximized` (pass `null` otherwise), and build `sizes` from the
+entry's `validSizes` — include `"small"` only when present.
+
+`WidgetMenuFooter` renders `MoveSubmenu` for you (reads/writes `widgets.order`
+via `resolveWidgetOrder`, renders nothing when the widget can't move), dispatches
+the Hide pref + `widgets_enabled` telemetry, and opens the Learn more link with
+`where: "tab"`. `onLearnMore` is optional and fires only the extra `learn_more`
+`widgets_user_event` — do NOT dispatch `OPEN_LINK` yourself.
+
+This footer used to be copy-pasted into every widget and drifted out of sync
+(inconsistent order, a missing divider, Learn more opening in the current tab);
+Bug 2046045 / D306294 consolidated it. Keep new widgets on the shared components.
+
+## Telemetry — use the useWidgetTelemetry hook
+
+Do not hand-build `WIDGETS_IMPRESSION` / `WIDGETS_USER_EVENT` payloads or wire an
+`IntersectionObserver`. Call `useWidgetTelemetry({ dispatch, widget: ENTRY,
+widgetSize })`, attach the returned `impressionRef` to the widget's root element,
+and use `recordUserAction(action, { source, value })` for interactions. It also
+returns `recordEnabled`, `recordImpression`, and `recordError`, and keys every
+event on the entry's `telemetryName` for you.
 
 ## Standard widget props
 
@@ -292,8 +320,10 @@ change with a telemetry dispatch, etc.
 
 ## Learn More URL
 
-Always point to `https://support.mozilla.org/kb/firefox-new-tab-widgets`. Do not
-create a widget-specific SUMO page — all widgets share this URL.
+All widgets share `https://support.mozilla.org/kb/firefox-new-tab-widgets`, and
+`WidgetMenuFooter` already opens it (in a new tab) for you — do not dispatch
+`OPEN_LINK` or hardcode the URL in your widget. Do not create a widget-specific
+SUMO page.
 
 ## Use the `.jsx` extension for content-src files
 

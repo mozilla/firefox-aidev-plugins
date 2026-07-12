@@ -3,17 +3,19 @@
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
 // eslint-disable-next-line no-unused-vars
-import React, { useCallback, useRef } from "react";
+import React, { useCallback } from "react";
 import { useSelector, batch } from "react-redux";
 import { actionCreators as ac, actionTypes as at } from "common/Actions.mjs";
-import { useIntersectionObserver, useSizeSubmenu } from "../../../lib/utils";
 import { WIDGET_REGISTRY, resolveWidgetSize } from "common/WidgetsRegistry.mjs";
-import { MoveSubmenu } from "../MoveSubmenu";
+import { SizeSubmenu } from "../SizeSubmenu";
+import { WidgetMenuFooter } from "../WidgetMenuFooter";
+import { useWidgetTelemetry } from "../useWidgetTelemetry";
 
 // Only present for interactive widgets. Remove entirely for view-only widgets.
 const USER_ACTION_TYPES = {
   CHANGE_SIZE: "change_size",
   DO_THING: "do_thing",
+  LEARN_MORE: "learn_more",
 };
 
 // Constants for any extra widget-specific prefs read inside this component.
@@ -42,26 +44,20 @@ function ExampleWidget({
   // Size comes from the registry helper: user-set pref > trainhop suggestion
   // > registry defaultSize. Never read the size pref directly.
   const widgetSize = resolveWidgetSize(EXAMPLE_ENTRY, prefs);
-  const impressionFired = useRef(false);
 
-  const handleIntersection = useCallback(() => {
-    if (impressionFired.current) {
-      return;
-    }
-    impressionFired.current = true;
-    dispatch(
-      ac.AlsoToMain({
-        type: at.WIDGETS_IMPRESSION,
-        data: {
-          // telemetryName from the registry entry (snake_case, no "widget").
-          widget_name: "example",
-          widget_size: widgetSize,
-        },
-      })
-    );
-  }, [dispatch, widgetSize]);
-
-  const widgetRef = useIntersectionObserver(handleIntersection);
+  // Shared telemetry hook. Do NOT hand-build WIDGETS_IMPRESSION /
+  // WIDGETS_USER_EVENT payloads or wire up your own IntersectionObserver:
+  // attach `impressionRef` to the widget root for the one-shot impression, and
+  // call `recordUserAction(action, { source, value })` for interactions
+  // (`value` sets `action_value`; pass `size` to override the reported
+  // `widget_size`). `widget` is the registry entry; its `telemetryName`
+  // becomes `widget_name`. The hook also returns `recordImpression`,
+  // `recordEnabled`, and `recordError`.
+  const { impressionRef, recordUserAction } = useWidgetTelemetry({
+    dispatch,
+    widget: EXAMPLE_ENTRY,
+    widgetSize,
+  });
 
   // Call handleUserInteraction("<id>") after any interaction that should mark
   // the widget as "interacted with" for the feature-highlight flow.
@@ -72,43 +68,10 @@ function ExampleWidget({
 
   function handleDoThing() {
     batch(() => {
-      // Your main action dispatch goes here, e.g. ac.AlsoToMain(...)
-
-      dispatch(
-        ac.OnlyToMain({
-          type: at.WIDGETS_USER_EVENT,
-          data: {
-            widget_name: "example",
-            widget_source: "widget",
-            user_action: USER_ACTION_TYPES.DO_THING,
-            widget_size: widgetSize,
-          },
-        })
-      );
+      // Your main action dispatch goes here, e.g. dispatch(ac.AlsoToMain(...))
+      recordUserAction(USER_ACTION_TYPES.DO_THING, { source: "widget" });
     });
     handleInteraction();
-  }
-
-  function handleExampleHide() {
-    batch(() => {
-      dispatch(
-        ac.OnlyToMain({
-          type: at.SET_PREF,
-          data: { name: EXAMPLE_ENTRY.enabledPref, value: false },
-        })
-      );
-      dispatch(
-        ac.OnlyToMain({
-          type: at.WIDGETS_ENABLED,
-          data: {
-            widget_name: "example",
-            widget_source: "context_menu",
-            enabled: false,
-            widget_size: widgetSize,
-          },
-        })
-      );
-    });
   }
 
   const handleChangeSize = useCallback(
@@ -120,49 +83,24 @@ function ExampleWidget({
             data: { name: EXAMPLE_ENTRY.sizePref, value: size },
           })
         );
-        dispatch(
-          ac.OnlyToMain({
-            type: at.WIDGETS_USER_EVENT,
-            data: {
-              widget_name: "example",
-              widget_source: "context_menu",
-              user_action: USER_ACTION_TYPES.CHANGE_SIZE,
-              action_value: size,
-              widget_size: size,
-            },
-          })
-        );
+        // `value` is action_value; `size` overrides the reported widget_size.
+        // For a resize they're the new size, but they are distinct fields —
+        // without `size` the event would report the pre-change widget_size.
+        recordUserAction(USER_ACTION_TYPES.CHANGE_SIZE, {
+          source: "context_menu",
+          value: size,
+          size,
+        });
       });
     },
-    [dispatch]
+    [dispatch, recordUserAction]
   );
 
-  // Shared hook: returns a ref to attach to the resize submenu's <panel-list>.
-  // It listens at the panel-list root and walks composedPath() to find the
-  // clicked size by its data-size attribute. Do NOT hand-roll this — React's
-  // synthetic onClick does not cross the panel-list shadow-DOM boundary.
-  const sizeSubmenuRef = useSizeSubmenu(handleChangeSize);
-
+  // Hide and the "Learn more" link (opened in a new tab) are owned by
+  // WidgetMenuFooter. This callback only records the extra learn_more event the
+  // footer fires through `onLearnMore` — do not dispatch OPEN_LINK yourself.
   function handleLearnMore() {
-    batch(() => {
-      dispatch(
-        ac.OnlyToMain({
-          type: at.OPEN_LINK,
-          data: { url: "https://support.mozilla.org/kb/firefox-new-tab-widgets" },
-        })
-      );
-      dispatch(
-        ac.OnlyToMain({
-          type: at.WIDGETS_USER_EVENT,
-          data: {
-            widget_name: "example",
-            widget_source: "context_menu",
-            user_action: "learn_more",
-            widget_size: widgetSize,
-          },
-        })
-      );
-    });
+    recordUserAction(USER_ACTION_TYPES.LEARN_MORE, { source: "context_menu" });
   }
 
   // No per-widget Nova gate. The widgets container (Widgets.jsx) already renders
@@ -174,9 +112,7 @@ function ExampleWidget({
   return (
     <article
       className={`example widget col-4 ${widgetSize}-widget`}
-      ref={el => {
-        widgetRef.current = [el];
-      }}
+      ref={impressionRef}
     >
       <div className="example-title-wrapper">
         <h3 className="newtab-example-title">Example Widget</h3>
@@ -188,41 +124,34 @@ function ExampleWidget({
             type="ghost"
           />
           <panel-list id="example-context-menu">
-            {/* Additional context menu items from the spec go here, first. */}
+            {/* Widget-specific menu items from the spec go here, ABOVE the
+                shared footer. */}
 
-            {/* Resize submenu — only when sizing is available in this layout.
-                Include "small" in the map only when validSizes contains it. */}
-            {widgetsMayBeMaximized && (
-              <panel-item submenu="example-size-submenu">
-                <span data-l10n-id="newtab-widget-menu-change-size"></span>
-                <panel-list
-                  ref={sizeSubmenuRef}
-                  slot="submenu"
-                  id="example-size-submenu"
-                >
-                  {["medium", "large"].map(size => (
-                    <panel-item
-                      key={size}
-                      type="checkbox"
-                      checked={widgetSize === size || undefined}
-                      data-size={size}
-                      data-l10n-id={`newtab-widget-size-${size}`}
-                    />
-                  ))}
-                </panel-list>
-              </panel-item>
-            )}
-
-            {/* Reorder submenu — shared component, reads widgets.order. */}
-            <MoveSubmenu widgetId="example" widgetEnabledMap={widgetEnabledMap} />
-
-            <panel-item
-              data-l10n-id="newtab-widget-menu-hide"
-              onClick={handleExampleHide}
-            />
-            <panel-item
-              data-l10n-id="newtab-example-menu-learn-more"
-              onClick={handleLearnMore}
+            {/* Shared trailing block for every widget menu, in a fixed order:
+                divider, Change size, Move, Hide widget, Learn more (opens in a
+                new tab). Pass the Change size submenu via `sizeSubmenu` — or
+                pass null for widgets that don't resize. Do NOT hand-roll the
+                size submenu / MoveSubmenu / Hide / Learn more items; that is
+                what drifts out of sync (see Bug 2046045 / D306294). */}
+            <WidgetMenuFooter
+              dispatch={dispatch}
+              widgetId={EXAMPLE_ENTRY.id}
+              widgetEnabledMap={widgetEnabledMap}
+              widgetName={EXAMPLE_ENTRY.telemetryName}
+              enabledPref={EXAMPLE_ENTRY.enabledPref}
+              widgetSize={widgetSize}
+              learnMoreL10nId="newtab-example-menu-learn-more"
+              onLearnMore={handleLearnMore}
+              sizeSubmenu={
+                widgetsMayBeMaximized ? (
+                  <SizeSubmenu
+                    submenuId="example-size-submenu"
+                    sizes={["medium", "large"]}
+                    checkedSize={widgetSize}
+                    onChangeSize={handleChangeSize}
+                  />
+                ) : null
+              }
             />
           </panel-list>
         </div>
