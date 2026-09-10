@@ -20,6 +20,10 @@
     {
       "name": "tae",
       "source": "./plugins/tae"
+    },
+    {
+      "name": "captchadetection",
+      "source": "./plugins/captchadetection"
     }
   ]
 }

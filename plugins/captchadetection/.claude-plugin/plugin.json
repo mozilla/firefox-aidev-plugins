@@ -1,0 +1,5 @@
+{
+  "name": "captchadetection",
+  "description": "Skills and tools for Firefox CAPTCHA detection telemetry analysis",
+  "version": "1.0.0"
+}
