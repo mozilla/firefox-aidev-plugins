@@ -6,6 +6,18 @@
   },
   "plugins": [
     {
+      "name": "captchadetection",
+      "source": "./plugins/captchadetection"
+    },
+    {
+      "name": "figma",
+      "source": "./plugins/figma"
+    },
+    {
+      "name": "ipprotection",
+      "source": "./plugins/ipprotection"
+    },
+    {
       "name": "newtab",
       "source": "./plugins/newtab"
     },
@@ -14,20 +26,8 @@
       "source": "./plugins/nsis"
     },
     {
-      "name": "ipprotection",
-      "source": "./plugins/ipprotection"
-    },
-    {
-      "name": "figma",
-      "source": "./plugins/figma"
-    },
-    {
       "name": "tae",
       "source": "./plugins/tae"
-    },
-    {
-      "name": "captchadetection",
-      "source": "./plugins/captchadetection"
     }
   ]
 }
