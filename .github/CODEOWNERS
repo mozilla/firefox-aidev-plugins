@@ -1,10 +1,10 @@
 *                              @mozilla/ai4dev
 
 # Code owners for specific plugins
+/plugins/captchadetection/     @tomrittervg
 /plugins/figma/                @rocketsroger
 /plugins/ipprotection/         @msujaws
 /plugins/newtab/               @maxxcrawford
 /plugins/newtab/skills/backend-investigation/ @mozilla/hnt-wg
 /plugins/nsis/                 @antonioborondo
 /plugins/tae/                  @aaronmt
-/plugins/captchadetection/     @tomrittervg
