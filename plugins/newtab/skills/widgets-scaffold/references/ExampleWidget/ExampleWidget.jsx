@@ -8,32 +8,30 @@ import { useSelector, batch } from "react-redux";
 import { actionCreators as ac, actionTypes as at } from "common/Actions.mjs";
 import { WIDGET_REGISTRY, resolveWidgetSize } from "common/WidgetsRegistry.mjs";
 import { SizeSubmenu } from "../SizeSubmenu";
+import { WidgetMenuButton } from "../WidgetMenuButton";
 import { WidgetMenuFooter } from "../WidgetMenuFooter";
 import { useWidgetTelemetry } from "../useWidgetTelemetry";
 
-// Only present for interactive widgets. Remove entirely for view-only widgets.
+// CHANGE_SIZE and LEARN_MORE are recorded from the callbacks the shared footer
+// fires; add the widget's own actions from the spec (DO_THING is a placeholder).
 const USER_ACTION_TYPES = {
   CHANGE_SIZE: "change_size",
   DO_THING: "do_thing",
   LEARN_MORE: "learn_more",
 };
 
-// Constants for any extra widget-specific prefs read inside this component.
-// The enabled/system.enabled/size prefs are owned by the registry — do not
-// redeclare them here. Omit this block if there are no extra prefs.
-const PREF_EXAMPLE_MAX_ITEMS = "widgets.example.maxItems";
+// Any extra widget-specific pref read here must also be registered in
+// lib/ActivityStream.sys.mjs. The enabled/system.enabled/size/interaction prefs
+// are owned by the registry and the scaffold — do not redeclare them.
 
-// Look the entry up once by registry id. NOTE: the id must NOT contain the
-// word "widget" — it lives under the `widgets.` pref namespace, so a suffix
-// like "exampleWidget" is redundant (and caused a real pref/telemetry bug on
-// the Sports widget). Use "example", not "exampleWidget".
+// Look the entry up once by registry id ("example", never "exampleWidget").
 const EXAMPLE_ENTRY = WIDGET_REGISTRY.find(w => w.id === "example");
 
+// The row renderer also passes `isMaximized`; leave it out until something
+// needs it rather than pulling it in and silencing the unused-var lint.
 function ExampleWidget({
   dispatch,
-  handleUserInteraction, // omit for view-only widgets
-  // eslint-disable-next-line no-unused-vars
-  isMaximized,
+  handleUserInteraction,
   widgetsMayBeMaximized,
   widgetEnabledMap,
 }) {
@@ -70,8 +68,8 @@ function ExampleWidget({
     batch(() => {
       // Your main action dispatch goes here, e.g. dispatch(ac.AlsoToMain(...))
       recordUserAction(USER_ACTION_TYPES.DO_THING, { source: "widget" });
+      handleInteraction();
     });
-    handleInteraction();
   }
 
   const handleChangeSize = useCallback(
@@ -91,39 +89,61 @@ function ExampleWidget({
           value: size,
           size,
         });
+        handleInteraction();
       });
     },
-    [dispatch, recordUserAction]
+    [dispatch, recordUserAction, handleInteraction]
   );
 
   // Hide and the "Learn more" link (opened in a new tab) are owned by
-  // WidgetMenuFooter. This callback only records the extra learn_more event the
-  // footer fires through `onLearnMore` — do not dispatch OPEN_LINK yourself.
+  // WidgetMenuFooter. This callback, fired through `onLearnMore`, records the
+  // extra learn_more event and clears the badge; do not dispatch OPEN_LINK.
   function handleLearnMore() {
-    recordUserAction(USER_ACTION_TYPES.LEARN_MORE, { source: "context_menu" });
+    batch(() => {
+      recordUserAction(USER_ACTION_TYPES.LEARN_MORE, { source: "context_menu" });
+      handleInteraction();
+    });
   }
 
-  // No per-widget Nova gate. The widgets container (Widgets.jsx) already renders
-  // WIDGET_ROW_COMPONENTS only in its Nova branch, so this widget mounts only when
-  // Nova is enabled — adding a `nova.enabled` early return here would be redundant.
-
-  const maxItems = prefs[PREF_EXAMPLE_MAX_ITEMS];
+  // The "New" badge shows until the first interaction flips this pref.
+  const hasInteracted = prefs["widgets.example.interaction"];
 
   return (
     <article
       className={`example widget col-4 ${widgetSize}-widget`}
       ref={impressionRef}
+      aria-labelledby="example-widget-label"
     >
       <div className="example-title-wrapper">
-        <h3 className="newtab-example-title">Example Widget</h3>
-        <div className="example-context-menu-wrapper">
-          <moz-button
-            className="example-context-menu-button"
-            iconSrc="chrome://global/skin/icons/more.svg"
-            menuId="example-context-menu"
-            type="ghost"
+        <div className="example-badge-title-wrapper">
+          {!hasInteracted && (
+            <moz-badge
+              className="example-new-badge"
+              data-l10n-id="newtab-widget-lists-label-new"
+            ></moz-badge>
+          )}
+          {/* `newtab-widget-title` is the shared title typography from
+              Widgets/_Widgets.scss; do not restyle the heading. The article's
+              aria-labelledby points here, so the title message is also the
+              widget's accessible name. */}
+          <h2
+            id="example-widget-label"
+            className="newtab-widget-title"
+            data-l10n-id="newtab-example-widget-title"
           />
-          <panel-list id="example-context-menu">
+        </div>
+        <div className="example-context-menu-wrapper">
+          {/* The shared button fixes the icon, type and size. It is icon-only,
+              so its message must exist or a screen reader announces just
+              "button": add `newtab-example-widget-open-menu-button` (with
+              .title and .aria-label) to newtab.ftl in the same patch. An
+              unresolved Fluent id fails silently, unlike a bad import. */}
+          <WidgetMenuButton
+            className="example-context-menu-button"
+            menuId="example-context-menu"
+            l10nId="newtab-example-widget-open-menu-button"
+          />
+          <panel-list className="panel-list-no-icons" id="example-context-menu">
             {/* Widget-specific menu items from the spec go here, ABOVE the
                 shared footer. */}
 
@@ -132,7 +152,7 @@ function ExampleWidget({
                 new tab). Pass the Change size submenu via `sizeSubmenu` — or
                 pass null for widgets that don't resize. Do NOT hand-roll the
                 size submenu / MoveSubmenu / Hide / Learn more items; that is
-                what drifts out of sync (see Bug 2046045 / D306294). */}
+                what drifts out of sync. */}
             <WidgetMenuFooter
               dispatch={dispatch}
               widgetId={EXAMPLE_ENTRY.id}
@@ -142,11 +162,14 @@ function ExampleWidget({
               widgetSize={widgetSize}
               learnMoreL10nId="newtab-example-menu-learn-more"
               onLearnMore={handleLearnMore}
+              // Drop this once the widget has items of its own above the
+              // footer; with none, the leading divider is a stray separator.
+              showDivider={false}
               sizeSubmenu={
                 widgetsMayBeMaximized ? (
                   <SizeSubmenu
                     submenuId="example-size-submenu"
-                    sizes={["medium", "large"]}
+                    sizes={EXAMPLE_ENTRY.validSizes}
                     checkedSize={widgetSize}
                     onChangeSize={handleChangeSize}
                   />
@@ -157,9 +180,10 @@ function ExampleWidget({
         </div>
       </div>
 
-      {/* Widget body */}
+      {/* Widget body: replace with the content from the spec. Every string the
+          body shows needs its own message in newtab.ftl; `newtab-example-do-thing`
+          below is a placeholder id, not one the scaffold adds. */}
       <div className="example-body">
-        <p>Widget content goes here. Max items: {maxItems}</p>
         <moz-button
           data-l10n-id="newtab-example-do-thing"
           onClick={handleDoThing}

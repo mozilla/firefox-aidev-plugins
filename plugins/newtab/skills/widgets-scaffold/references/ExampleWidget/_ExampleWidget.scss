@@ -2,7 +2,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this file,
  * You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-/* stylelint-disable stylelint-plugin-mozilla/use-design-tokens */
+// No file-level `stylelint-disable use-design-tokens` here, deliberately: it
+// would opt the whole stylesheet out of the check. If one declaration genuinely
+// cannot use a token, put a targeted `stylelint-disable-next-line` on that line.
 
 // Root class is the css-class form of the registry id — no "-widget" suffix
 // (the shared `widget` class is applied alongside it). e.g. id "example".
@@ -14,7 +16,7 @@
   @include widget-base-style;
 
   // Grid-row span per size. Add &.small-widget only if validSizes includes
-  // "small" (and the widget stays in the row, i.e. hasSidebar is false).
+  // "small".
   &.medium-widget {
     grid-row: span 2;
   }
@@ -24,16 +26,42 @@
   }
 }
 
+// The title's typography comes from the shared .newtab-widget-title rule in
+// Widgets/_Widgets.scss; these rules only lay the row out.
 .example-title-wrapper {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-block-end: var(--space-xsmall);
+}
 
-  h3 {
-    margin-block: 0;
-    font-weight: var(--font-weight);
-    font-size: var(--font-size-root);
+.example-badge-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-small);
+  min-inline-size: 0;
+}
+
+// Keep this at the top level so the High Contrast Mode override below applies.
+// The 1px below is how every widget sets the badge padding; stylelint accepts
+// it there without a disable.
+.example-new-badge {
+  flex: none;
+  background-color: var(--badge-background-color-filled);
+  border-radius: var(--badge-border-radius);
+  text-transform: uppercase;
+
+  --badge-padding-block: 1px;
+  --badge-padding-inline: var(--space-small);
+  --badge-background-color-filled: var(--color-green-40);
+  --badge-text-color: var(--badge-text-color-filled);
+  --badge-border-color: transparent;
+}
+
+// Keep the badge readable in High Contrast Mode by using the system accent.
+@media (forced-colors: active) {
+  .example-new-badge {
+    --badge-background-color-filled: AccentColor;
   }
 }
 
@@ -57,4 +85,5 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-small);
+  min-height: 0;
 }

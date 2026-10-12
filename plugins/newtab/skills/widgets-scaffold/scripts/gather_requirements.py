@@ -36,10 +36,10 @@ def to_upper_snake(camel):
 
 def strip_widget(value):
     """Remove a redundant 'widget' token from a name. The pref namespace is
-    already `widgets.`, so a *Widget suffix duplicates it (this caused a real
-    pref/telemetry bug on the Sports widget). Returns the cleaned value."""
+    already `widgets.`, so a *Widget suffix duplicates it. Returns the cleaned
+    value."""
     # camelCase / PascalCase suffix: fooWidget -> foo
-    cleaned = re.sub(r"[Ww]idget", "", value)
+    cleaned = re.sub(r"widget", "", value, flags=re.IGNORECASE)
     # snake/kebab leftovers: foo_widget / foo- -> foo
     cleaned = re.sub(r"[_-]+$", "", cleaned)
     cleaned = re.sub(r"^[_-]+", "", cleaned)
@@ -56,7 +56,7 @@ def ask_clean_name(prompt, label):
         print(
             f"\n  '{value}' contains 'widget'. The {label} must NOT include it — "
             f"it lives under the `widgets.` namespace, so the suffix is redundant\n"
-            f"  (this caused a pref/telemetry bug on the Sports widget)."
+            f"  (the id and the telemetry name must match without it)."
         )
         choice = input(
             f"> Use '{suggestion}' instead? [Enter = yes, or type another value]: "
@@ -88,7 +88,7 @@ def main():
     widget_key = ask_clean_name(
         "Q2. What is the camelCase key (registry `id`) for this widget?\n"
         "    (e.g. 'readingList', 'quickNotes') — used in pref names and the order pref.\n"
-        "    Do NOT include 'widget' (use 'sports', not 'sportsWidget').",
+        "    Do NOT include 'widget' (use 'example', not 'exampleWidget').",
         "widget id",
     )
 
@@ -106,28 +106,18 @@ def main():
     component_name = widget_key[0].upper() + widget_key[1:]
     widget_key_upper = to_upper_snake(widget_key)
 
-    # Q4 — telemetry name (snake_case), also enforced clean
-    default_telemetry = to_snake(widget_key)
+    # Q4 — telemetry name is always the snake_case form of the id
+    telemetry_name = to_snake(widget_key)
     print(
-        f"\n[Q4 inferred] telemetryName: '{default_telemetry}'  (snake_case Glean name)"
+        f"\n[Q4 derived] telemetryName: '{telemetry_name}'  (snake_case form of the id)"
     )
-    tel_override = input(
-        f"> Press Enter to accept '{default_telemetry}', or type a different value: "
-    ).strip()
-    telemetry_name = tel_override or default_telemetry
-    if "widget" in telemetry_name.lower():
-        fixed = strip_widget(telemetry_name) or default_telemetry
-        print(
-            f"  telemetryName must not include 'widget' — using '{fixed}' "
-            f"(Sports had to fix 'sports_widget' -> 'sports')."
-        )
-        telemetry_name = fixed
 
     # Q5 — order
     order = ask(
         "Q5. What `order` integer should this widget have?\n"
-        "    (0-indexed render position; use the next free integer after the\n"
-        "     existing entries, or 'next' to let Claude fill it in.)",
+        "    (The entry is appended to WIDGET_REGISTRY and `order` is the next\n"
+        "     free integer after the last entry, retired ones included; array\n"
+        "     position is what renders. Type it, or 'next' to let Claude fill it in.)",
         allow_empty=True,
     ) or "next"
 
@@ -158,8 +148,9 @@ def main():
     if "small" in valid_sizes:
         sidebar_raw = ask(
             "Q8. Should this widget move to the SIDEBAR when its size is 'small'?\n"
-            "    Most widgets stay in the row — answer 'no' unless the spec needs a\n"
-            "    sidebar placement (only Weather does today). Answer 'yes' or 'no'."
+            "    Answer 'no' unless the spec requires it: the sidebar holds one widget\n"
+            "    and Weather occupies it, so a second needs a layout decision first.\n"
+            "    Answer 'yes' or 'no'."
         )
         has_sidebar = sidebar_raw.lower().startswith("y")
     else:
@@ -187,9 +178,15 @@ def main():
             "     (e.g. 'add_item, toggle_item, delete_item')"
         )
 
+    # Q11b — what the body shows
+    body_description = ask(
+        "Q11b. In a sentence or two, what does the widget body show, and where\n"
+        "      does its data come from?"
+    )
+
     # Q12
     extra_prefs = ask(
-        "Q12. Any widget-specific prefs beyond enabled / system.enabled / size?\n"
+        "Q12. Any widget-specific prefs beyond enabled / system.enabled / size / interaction?\n"
         "     List each with type and default (e.g. 'widgets.readingList.maxItems, int, 20') or 'none'.",
         allow_empty=True,
     )
@@ -213,6 +210,11 @@ def main():
     trainhop_size = f"{widget_key}Size"
     trainhop_sidebar = f"{widget_key}Sidebar" if has_sidebar else "null"
     sidebar_key_literal = f'"{trainhop_sidebar}"' if has_sidebar else "null"
+    # Dedicated Nimbus namespace: `widget` + PascalCase id (widgetPictureOfTheDay).
+    trainhop_namespace = f"widget{component_name}"
+    # Customize panel label and telemetry source, both derived.
+    customize_l10n_id = f"newtab-custom-widget-{css_class}-toggle"
+    customize_event_source = f"WIDGET_{telemetry_name.upper()}"
 
     # --- Print summary ---
     print("\n" + "=" * 60)
@@ -223,6 +225,7 @@ def main():
     print(f"  widgetKey (id):    {widget_key}")
     print(f"  cssClass:          {css_class}")
     print(f"  telemetryName:     {telemetry_name}")
+    print(f"  trainhopNamespace: {trainhop_namespace}")
     print(f"  WIDGET_KEY:        {widget_key_upper}")
     print(f"  order:             {order}")
     print(f"  validSizes:        {valid_sizes}")
@@ -231,6 +234,7 @@ def main():
     print(f"  interactive:       {'yes' if is_interactive else 'no (view-only)'}")
     if is_interactive and user_actions:
         print(f"  userActions:       {user_actions}")
+    print(f"  body:              {body_description}")
     print(f"  extraMenuItems:    {extra_menu_items or 'none'}")
     print(f"  extraPrefs:        {extra_prefs or 'none'}")
     print(f"  reduxState:        {'yes — ' + redux_shape if has_redux else 'no'}")
@@ -244,6 +248,8 @@ def main():
         f"""  {{
     id: "{widget_key}",
     telemetryName: "{telemetry_name}",
+    customizeL10nId: "{customize_l10n_id}",
+    customizeEventSource: "{customize_event_source}",
     order: {order if order != 'next' else '/* next free integer */'},
     enabledPref: PREF_WIDGETS_{widget_key_upper}_ENABLED,
     sizePref: PREF_{widget_key_upper}_SIZE,
@@ -256,6 +262,7 @@ def main():
     trainhopSidebarKey: {sidebar_key_literal},
     widgetsSettingsVisibleKey: "{widget_key}Visible",
     widgetsSettingsEnabledKey: "{trainhop_enabled}",
+    trainhopNamespace: "{trainhop_namespace}",
   }},"""
     )
     print("\n  Pref-key constants to export from the same file:")
@@ -264,13 +271,29 @@ def main():
         f'    export const PREF_{widget_key_upper}_SIZE = "widgets.{widget_key}.size";\n'
         f'    export const PREF_WIDGETS_SYSTEM_{widget_key_upper}_ENABLED = "widgets.system.{widget_key}.enabled";'
     )
+    print(
+        f'\n  Also register "widgets.{widget_key}.interaction" (boolean, default false)\n'
+        "  in ActivityStream.sys.mjs with the other three; no constant is needed,\n"
+        "  Widgets.jsx builds the name from the id. The two enabled prefs start\n"
+        '  "off everywhere": getValue: () => !marketGateEnabled() for the user\n'
+        "  pref, value: false for the system pref (see SKILL.md Step 2)."
+    )
+    print(
+        "\n  Fluent messages to add to browser/locales/en-US/browser/newtab/newtab.ftl\n"
+        "  (values are placeholders; final copy comes from the copywriter):\n"
+        f"    newtab-{css_class}-widget-title = {display_name}\n"
+        f"    newtab-{css_class}-widget-open-menu-button  (.title and .aria-label = Open {display_name.lower()} menu)\n"
+        f"    newtab-{css_class}-menu-learn-more = Learn more\n"
+        f"    {customize_l10n_id}  (.label = {display_name})\n"
+        "  No home-prefs-* string: about:preferences does not list widgets."
+    )
     if has_sidebar:
         print(
             "\n  hasSidebar: true — also register a sidebar component. "
             "See references/SidebarVariant.md."
         )
     print("=" * 60)
-    print("\nNow enter plan mode: /widgets-scaffold with the spec above.")
+    print("\nPaste this summary back to Claude; the skill continues at Step 2.")
 
 
 if __name__ == "__main__":
