@@ -440,11 +440,11 @@ The action types in `common/Actions.mjs` are alphabetically sorted, and a test i
 new `WIDGETS_*` action types (most don't). Keep them in order, e.g.
 `WIDGETS_..._SEEN` before `WIDGETS_..._SET`.
 
-## batch() on every multi-dispatch
+## Don't use batch()
 
-Any handler that dispatches two or more actions must wrap them in `batch()` to
-avoid intermediate renders — hide handlers, resize, user events that pair a state
-change with a telemetry dispatch, etc.
+Newtab is on React 19, which batches state updates automatically, so do not
+wrap multiple dispatches in `react-redux`'s `batch()`. Older widgets (Clocks,
+Weather, etc.) still use it; don't copy that pattern.
 
 ## Learn More URL
 

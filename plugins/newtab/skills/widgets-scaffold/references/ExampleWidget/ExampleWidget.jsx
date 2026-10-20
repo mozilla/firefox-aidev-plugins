@@ -4,7 +4,7 @@
 
 // eslint-disable-next-line no-unused-vars
 import React, { useCallback } from "react";
-import { useSelector, batch } from "react-redux";
+import { useSelector } from "react-redux";
 import { actionCreators as ac, actionTypes as at } from "common/Actions.mjs";
 import { WIDGET_REGISTRY, resolveWidgetSize } from "common/WidgetsRegistry.mjs";
 import { SizeSubmenu } from "../SizeSubmenu";
@@ -65,32 +65,28 @@ function ExampleWidget({
   );
 
   function handleDoThing() {
-    batch(() => {
-      // Your main action dispatch goes here, e.g. dispatch(ac.AlsoToMain(...))
-      recordUserAction(USER_ACTION_TYPES.DO_THING, { source: "widget" });
-      handleInteraction();
-    });
+    // Your main action dispatch goes here, e.g. dispatch(ac.AlsoToMain(...))
+    recordUserAction(USER_ACTION_TYPES.DO_THING, { source: "widget" });
+    handleInteraction();
   }
 
   const handleChangeSize = useCallback(
     size => {
-      batch(() => {
-        dispatch(
-          ac.OnlyToMain({
-            type: at.SET_PREF,
-            data: { name: EXAMPLE_ENTRY.sizePref, value: size },
-          })
-        );
-        // `value` is action_value; `size` overrides the reported widget_size.
-        // For a resize they're the new size, but they are distinct fields —
-        // without `size` the event would report the pre-change widget_size.
-        recordUserAction(USER_ACTION_TYPES.CHANGE_SIZE, {
-          source: "context_menu",
-          value: size,
-          size,
-        });
-        handleInteraction();
+      dispatch(
+        ac.OnlyToMain({
+          type: at.SET_PREF,
+          data: { name: EXAMPLE_ENTRY.sizePref, value: size },
+        })
+      );
+      // `value` is action_value; `size` overrides the reported widget_size.
+      // For a resize they're the new size, but they are distinct fields —
+      // without `size` the event would report the pre-change widget_size.
+      recordUserAction(USER_ACTION_TYPES.CHANGE_SIZE, {
+        source: "context_menu",
+        value: size,
+        size,
       });
+      handleInteraction();
     },
     [dispatch, recordUserAction, handleInteraction]
   );
@@ -99,10 +95,8 @@ function ExampleWidget({
   // WidgetMenuFooter. This callback, fired through `onLearnMore`, records the
   // extra learn_more event and clears the badge; do not dispatch OPEN_LINK.
   function handleLearnMore() {
-    batch(() => {
-      recordUserAction(USER_ACTION_TYPES.LEARN_MORE, { source: "context_menu" });
-      handleInteraction();
-    });
+    recordUserAction(USER_ACTION_TYPES.LEARN_MORE, { source: "context_menu" });
+    handleInteraction();
   }
 
   // The "New" badge shows until the first interaction flips this pref.
