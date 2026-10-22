@@ -14,6 +14,10 @@
       "source": "./plugins/figma"
     },
     {
+      "name": "gecko",
+      "source": "./plugins/gecko"
+    },
+    {
       "name": "ipprotection",
       "source": "./plugins/ipprotection"
     },

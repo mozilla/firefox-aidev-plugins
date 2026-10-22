@@ -3,6 +3,7 @@
 # Code owners for specific plugins
 /plugins/captchadetection/     @tomrittervg
 /plugins/figma/                @rocketsroger
+/plugins/gecko/                @alastor0325
 /plugins/ipprotection/         @msujaws
 /plugins/newtab/               @maxxcrawford
 /plugins/newtab/skills/backend-investigation/ @mozilla/hnt-wg

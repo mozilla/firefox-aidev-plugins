@@ -1,0 +1,5 @@
+{
+  "name": "gecko",
+  "description": "Skills for investigating Gecko bugs: Firefox Profiler analysis, Firefox log analysis, and web spec compliance checks",
+  "version": "0.1.0"
+}
