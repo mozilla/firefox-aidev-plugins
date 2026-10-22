@@ -33,10 +33,19 @@ Analyzes a Firefox log file (MOZ_LOG output, console or test log) for error
 signals, failure chains and root causes across processes. Bundled knowledge
 covers media, EME/CDM, HRESULT and GPU failures. See [`skills/analyze-logs/SKILL.md`](skills/analyze-logs/SKILL.md).
 
+### `spec-check`
+
+Checks that a web-exposed feature, or a codec, format or protocol
+implementation, follows its specification, and compares Firefox, Chromium and
+WebKit. Area catalogs in `skills/spec-check/references/` list the specs and
+WPT directories of one area; `media-specs.md` is the first. See
+[`skills/spec-check/SKILL.md`](skills/spec-check/SKILL.md).
+
 ## Optional tools
 
 - [`profiler-cli`](https://www.npmjs.com/package/@firefox-devtools/profiler-cli)
   for `analyze-profile`.
+- `webspec-index` for `spec-check`.
 
 ## Adding domain knowledge
 
@@ -45,3 +54,4 @@ it to the table in the skill's `SKILL.md`:
 
 - `analyze-profile`: `domains/`, next to `domains/media.md`
 - `analyze-logs`: `knowledge/`, next to the files there
+- `spec-check`: `references/`, next to `references/media-specs.md`
