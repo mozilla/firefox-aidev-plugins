@@ -1,0 +1,27 @@
+name: gecko plugin
+
+on:
+  pull_request:
+    paths:
+      - "plugins/gecko/**"
+      - ".claude-plugin/marketplace.json"
+      - ".github/workflows/gecko-plugin.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+      - run: npm install -g @firefox-devtools/profiler-cli
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: python -m unittest discover -s plugins/gecko/tests -v
+        env:
+          GECKO_TESTS_REQUIRE_TOOLS: "1"

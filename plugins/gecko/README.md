@@ -55,3 +55,20 @@ it to the table in the skill's `SKILL.md`:
 - `analyze-profile`: `domains/`, next to `domains/media.md`
 - `analyze-logs`: `knowledge/`, next to the files there
 - `spec-check`: `references/`, next to `references/media-specs.md`
+
+## Tests
+
+`tests/` has offline checks for the skill files: valid frontmatter, invocable
+skills, links and tables, trusted spec hosts, and the `profiler-cli` commands
+and flags that `analyze-profile` uses. Run them from the repository root:
+
+```
+python3 -m unittest discover -s plugins/gecko/tests -v
+```
+
+Tables in the Markdown files must have aligned columns. To align them, run
+`python3 plugins/gecko/tests/fmt_tables.py <file>`.
+
+The `profiler-cli` checks are skipped when `profiler-cli` is not installed. CI
+runs all of them on each pull request that changes this plugin, with the latest
+`profiler-cli`.
