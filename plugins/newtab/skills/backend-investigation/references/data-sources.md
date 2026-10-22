@@ -88,6 +88,8 @@ Traps:
 - Issue volume is dominated by long-standing error floors. Establish what was already there before
   attributing anything to today, and check whether a floor *changed* rather than whether it exists.
 - Decompose an issue by error message before trusting its title or trending it.
+- **Stage and prod events share one issue.** Show the `environment` field, or filter on it, before
+  reading an issue's history as prior occurrences in production.
 - Absence of events is weak evidence: a process that dies at startup, a job that drops items while
   reporting success, a write path disabled by a config flag, and a service whose Sentry integration is
   misconfigured or disabled for that environment all emit nothing.
@@ -137,6 +139,7 @@ GCP projects, for log reads, metrics and GCS listings:
 | Environment | Project |
 |---|---|
 | Merino prod | `moz-fx-merino-prod-5de4`, all buckets; `moz-fx-merino-prod-1c2f` is the retired GCPv1 project |
+| Merino prod pods and cronjobs | `moz-fx-webservices-high-prod` — container logs (`resource.type="k8s_container"`, filter on `resource.labels.container_name`) |
 | Merino stage | `moz-fx-merino-nonprod-db57`; `moz-fx-merino-nonprod-ee93` is the retired GCPv1 project |
 | Crawl and ML | `moz-fx-mozsoc-ml-prod`, with gen2 Cloud Functions `prod-crawl-handler`, `prod-page-crawler`, `prod-ingester`, `prod-parser`, `prod-parser-intl` |
 
@@ -493,6 +496,13 @@ producer problem from a serving one; a failed run is one `merino-py` Sentry even
 manifest is cached per pod against today's UTC date and a failed refresh keeps the old entry: pods
 that cached yesterday serve yesterday's picture while pods started since return `null` — both HTTP
 200, logged at info, raised nowhere, and counted only by `potd.provider.cached.none`.
+
+The job runs every two hours (`cronjobs.pictureOfTheDay` in webservices-infra
+`merino/k8s/merino/values*.yaml`) and exits early once today's manifest exists, so one failed tick
+is retried by the next one rather than lost; check the next tick before calling it an outage. The
+Wikimedia Featured API it reads is edge-cached (`s-maxage=300`) and ignores a request
+`Cache-Control: no-cache`, so a repeat request can return the same bad copy for five minutes. Add a
+throwaway query parameter to see what the origin is serving now.
 
 ## Crossword puzzle of the day — the `particle` provider
 
