@@ -88,6 +88,8 @@ Traps:
 - Issue volume is dominated by long-standing error floors. Establish what was already there before
   attributing anything to today, and check whether a floor *changed* rather than whether it exists.
 - Decompose an issue by error message before trusting its title or trending it.
+- **Stage and prod events share one issue.** Show the `environment` field, or filter on it, before
+  reading an issue's history as prior occurrences in production.
 - Absence of events is weak evidence: a process that dies at startup, a job that drops items while
   reporting success, a write path disabled by a config flag, and a service whose Sentry integration is
   misconfigured or disabled for that environment all emit nothing.
@@ -137,6 +139,7 @@ GCP projects, for log reads, metrics and GCS listings:
 | Environment | Project |
 |---|---|
 | Merino prod | `moz-fx-merino-prod-5de4`, all buckets; `moz-fx-merino-prod-1c2f` is the retired GCPv1 project |
+| Merino prod pods and cronjobs | `moz-fx-webservices-high-prod` — container logs (`resource.type="k8s_container"`, filter on `resource.labels.container_name`) |
 | Merino stage | `moz-fx-merino-nonprod-db57`; `moz-fx-merino-nonprod-ee93` is the retired GCPv1 project |
 | Crawl and ML | `moz-fx-mozsoc-ml-prod`, with gen2 Cloud Functions `prod-crawl-handler`, `prod-page-crawler`, `prod-ingester`, `prod-parser`, `prod-parser-intl` |
 
@@ -243,6 +246,11 @@ list` shows whether there is an active account. The same credentials cover the `
 GCS reads above. Confirm the billing project with a `--dry_run` before the first real query; try
 `mozdata-nonprod` first, then a personal sandbox, usually `moz-fx-dev-<ldap>-sandbox`. Anything missing there is an access task, and
 authenticating is interactive so it belongs to the developer.
+
+Feed the SQL on stdin with `--quiet`: `bq query --quiet --use_legacy_sql=false < q.sql > out.csv`. SQL
+passed as an argument that starts with a `--` comment is parsed as a flag, so `bq` prints its help instead.
+Without `--quiet`, the `Waiting on bqjob…` progress lines, carriage returns included, end up in any
+output redirected with `2>&1`.
 
 Crawl state (corpus and section state is under Snowplow below):
 
@@ -430,6 +438,21 @@ Which flows are deployed is per-locale, listed in `jobs/metaflow/deployed_flows_
 same repo. A surface whose flow is not deployed is a third possibility alongside a crawl gap and a
 serving gap.
 
+**A section below its minimum is skipped, not sent.** `RSSSubtopicsFlow.send_to_sqs` sends a section
+only when it has at least `item_minimum` candidates (`get_section_item_minimum`: the default is
+`MIN_SECTION_CANDIDATES` in `src/constants.py`, and a source's `solver_config_overrides` in `src/prospecting_config_<locale>.py` can override
+it). Below that it logs at INFO and sends nothing. The section keeps whatever items it had, or none, and
+stops updating while the run reports success. The quick tell is `Section.updatedAt` in corpus MySQL
+lagging the same surface's other ML sections, which are bumped on every send.
+
+What each run did with each candidate is in `moz-fx-data-shared-prod.mozsoc_ml_prod_ml_stats.rss_subtopics_drop_table`,
+a view written by the flow: one row per URL and outcome, with `RUN_ID`, `LOCALE`, `SECTION_ID`,
+`OUTCOME_SCOPE` (`url` or `section`), `OUTCOME` and `OUTCOME_DETAIL`. `selected` and `not selected by
+section ranking` are the section's eligible pool; the other outcomes say why the rest dropped out.
+Always filter on `LOCALE`, which cuts the scan by an order of magnitude (about 12 GB against 180–220 GB
+for the same two-month window with `RESOLVED_URL`), and dry-run first. Outcome bookkeeping has changed
+over time, so check that an outcome exists across your whole window before trending a rate built on it.
+
 ### Experiment enrolment
 
 Stratifying makes experiment branch one of the first cuts, and the branch names are not in any of the
@@ -447,8 +470,10 @@ variable name in anything you save, so no value lands in a query file or the tra
 
 **Extraction API** (`ZYTE_API_KEY`, created at https://app.zyte.com/o/612928/zyte-api/api-access)
 reproduces what the crawler saw for a URL. Request `article` for a single page or `articleList` for an
-index page — not both — and put `extractFrom: "httpResponseBody"` inside `articleOptions` /
-`articleListOptions` to skip the browser. Check **`statusCode` and the extraction probability before
+index page — not both — with the same `extractFrom` the crawler uses. The page crawler sends
+`articleListOptions: {"extractFrom": "browserHtml"}` (`jobs/cloudfunctions/crawl/docs/PAGES.md`).
+`httpResponseBody` is cheaper, but it can return zero articles from a JavaScript-rendered page that the
+crawler reads fine. Check **`statusCode` and the extraction probability before
 anything else**: a non-2xx, a bot wall, or a "JavaScript is disabled" page still returns a populated
 object that reads like success. Probability lives at `article.metadata.probability` for a single page
 and per item at `articleList.articles[].metadata.probability` — `articleList.metadata` carries only
@@ -456,7 +481,7 @@ and per item at `articleList.articles[].metadata.probability` — `articleList.m
 unapproved domains into the corpus.
 
 **Stats API** (`https://zyte-api-stats.zyte.com/api/stats`) is the vendor's own view of your traffic:
-per-domain response-code distribution over time. It takes a **different credential** — the Zyte
+per-domain request volume, cost and Zyte response codes over time. It takes a **different credential** — the Zyte
 dashboard API key from the organisation's settings page, explicitly not the Zyte API key above, held
 here as `ZYTE_SECRET_KEY`.
 
@@ -470,15 +495,29 @@ Zyte credential that is not the dashboard key, which in practice means the extra
 
 `organization_id` is **required** and is `612928`. Only `groupby_time` (`hour|day|month|year`) and
 `groupby_domain` group; `response_codes`, `domains`, `extraction_type` and `extraction_from` are
-*filters*, not groupings, and `include_domain_health=true` is rejected without `groupby_domain=true`.
+*filters*, not groupings. `include_domain_health=true` is rejected without `groupby_domain=true`, and
+returns `406 Not Acceptable` when combined with `domains`, so walk the pages to find the domain instead.
+
+The fields worth reading, per result:
+
+- `status_codes`: counts per code returned by the Zyte API, **not by the site**. A page the site serves
+  as 404 counts as `200`; only the extraction response's `statusCode` shows it.
+- `request_count`, `cost_microusd_total`.
+- `domain_health.status`: `healthy`, `possible_performance_issue`, `possible_misconfiguration` or
+  `issue_under_investigation`. This too is Zyte-side health; a domain whose pages all 404 reads `healthy`.
+- `domain_health.my_success_rate_24h` / `_7d` against `global_avg_success_rate_24h` / `_7d`: yours against
+  all Zyte customers on that domain. Yours alone dropping points at your requests; both dropping points at
+  the site or Zyte.
+- `domain_health.my_requests_24h` / `_7d`.
 
 Two defaults will quietly narrow an answer. **`start_time` defaults to seven days ago**, so a question
 about when something began returns only the last week unless you pass an explicit window with
 `end_time`. And results are **paginated, `page_size` maxing out at 500**, so a per-domain breakdown over
 any real window is truncated unless you walk `page`. Both look like a complete answer.
 
-This is the right source for "did this domain start failing, and when" — your own logs will not show it
-if the pipeline discards non-allowlisted status codes.
+This is the right source for "did Zyte start failing on this domain, and when". Your own logs will not
+show it if the pipeline discards non-allowlisted status codes. It is the wrong source for "does this
+page still exist": for that, reproduce one URL through the extraction API and read `statusCode`.
 
 ## Picture of the Day
 
@@ -493,6 +532,13 @@ producer problem from a serving one; a failed run is one `merino-py` Sentry even
 manifest is cached per pod against today's UTC date and a failed refresh keeps the old entry: pods
 that cached yesterday serve yesterday's picture while pods started since return `null` — both HTTP
 200, logged at info, raised nowhere, and counted only by `potd.provider.cached.none`.
+
+The job runs every two hours (`cronjobs.pictureOfTheDay` in webservices-infra
+`merino/k8s/merino/values*.yaml`) and exits early once today's manifest exists, so one failed tick
+is retried by the next one rather than lost; check the next tick before calling it an outage. The
+Wikimedia Featured API it reads is edge-cached (`s-maxage=300`) and ignores a request
+`Cache-Control: no-cache`, so a repeat request can return the same bad copy for five minutes. Add a
+throwaway query parameter to see what the origin is serving now.
 
 ## Crossword puzzle of the day — the `particle` provider
 
