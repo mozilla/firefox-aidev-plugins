@@ -10,6 +10,27 @@ As other agents (e.g., Codex) add marketplace support, plugins here will be exte
 
 If you have a plugin that you think would be useful for Firefox developers, please feel free to open a PR to add it here.
 
+## Installation
+
+If working from a Firefox repository, the marketplace is [automatically
+available](https://searchfox.org/firefox-main/source/.claude/settings.json).
+Otherwise, you can manually install with:
+
+```
+claude plugin marketplace add https://github.com/mozilla/firefox-aidev-plugins
+```
+
+then issue `/plugins` in `claude code`, press right arrow twice to see it in the
+list and browse this repositories' content.
+
+Alternatively, the first command can be replaced by issuing:
+
+```
+/plugin marketplace add mozilla/firefox-aidev-plugins
+```
+
+directly in `claude code`
+
 ## Structure
 
 Plugins are organized in the `plugins/` directory, with each plugin in its own subdirectory. Each plugin must also be listed in `.claude-plugin/marketplace.json` to be discoverable.
