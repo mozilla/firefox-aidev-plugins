@@ -257,7 +257,10 @@ def main():
     print(f"  extraMenuItems:    {extra_menu_items or 'none'}")
     if partner_name:
         print(f"  partner:           {partner_name} ({partner_url})")
-        print(f"    url constant:    {partner_upper}_URL")
+        url_constant = f"{partner_upper}_URL"
+        if url_constant[0].isdigit():
+            url_constant = f"PARTNER_{url_constant}"
+        print(f"    url constant:    {url_constant}")
         print(f"    userAction:      POWERED_BY_{partner_upper}: \"powered_by_{partner_snake}\"")
     else:
         print("  partner:           none")
