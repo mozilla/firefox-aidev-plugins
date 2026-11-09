@@ -163,6 +163,25 @@ def main():
         allow_empty=True,
     )
 
+    # Q9b — partner "Powered by" link
+    partner_name = ask(
+        "Q9b. Is the widget powered by a partner, with a 'Powered by' link in\n"
+        "     its menu (e.g. 'Yahoo', 'Kayak')? Type the partner name or 'none'.",
+        allow_empty=True,
+    )
+    if partner_name.lower() in ("", "none", "no"):
+        partner_name = ""
+    partner_url = ""
+    if partner_name:
+        partner_url = ask(
+            f"Q9c. What URL does 'Powered by {partner_name}' open?\n"
+            "     (e.g. 'https://www.yahoo.com/')"
+        )
+    partner_words = re.findall(r"[a-z0-9]+", partner_name.lower())
+    partner_kebab = "-".join(partner_words)
+    partner_snake = "_".join(partner_words)
+    partner_upper = partner_snake.upper()
+
     # Q10
     interactive_raw = ask(
         "Q10. Will users interact with the widget body itself (clicking buttons, typing, etc.)?\n"
@@ -236,6 +255,12 @@ def main():
         print(f"  userActions:       {user_actions}")
     print(f"  body:              {body_description}")
     print(f"  extraMenuItems:    {extra_menu_items or 'none'}")
+    if partner_name:
+        print(f"  partner:           {partner_name} ({partner_url})")
+        print(f"    url constant:    {partner_upper}_URL")
+        print(f"    userAction:      POWERED_BY_{partner_upper}: \"powered_by_{partner_snake}\"")
+    else:
+        print("  partner:           none")
     print(f"  extraPrefs:        {extra_prefs or 'none'}")
     print(f"  reduxState:        {'yes — ' + redux_shape if has_redux else 'no'}")
     print(f"  specialConditions: {special_conditions or 'none'}")
@@ -285,7 +310,13 @@ def main():
         f"    newtab-{css_class}-widget-open-menu-button  (.title and .aria-label = Open {display_name.lower()} menu)\n"
         f"    newtab-{css_class}-menu-learn-more = Learn more\n"
         f"    {customize_l10n_id}  (.label = {display_name})\n"
-        "  No home-prefs-* string: about:preferences does not list widgets."
+        + (
+            f"    newtab-{css_class}-menu-powered-by-{partner_kebab} = Powered by {partner_name}\n"
+            f"      (comment says “{partner_name}” is a brand name and should not be translated)\n"
+            if partner_name
+            else ""
+        )
+        + "  No home-prefs-* string: about:preferences does not list widgets."
     )
     if has_sidebar:
         print(
