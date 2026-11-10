@@ -55,7 +55,8 @@ that feature has by far the most moving parts. For anything else, find its provi
 Every path in this file is relative to a service repo, and the repos are listed under Content
 recommendations below. Check for a clone at the obvious spot only, `ls -d ~/<repo-name>`, and read
 anything missing through `gh api` or `gh search code`, which needs no clone: for one or two files that
-is faster than cloning anyway. Do not go scanning the filesystem for a checkout. If repeated source
+is faster than cloning anyway. Do not go scanning the filesystem for a checkout. A clone may sit on a feature branch, so read live code
+with `git show origin/main:<path>` after a fetch, and name the commit you read. If repeated source
 reading is genuinely slowing the investigation, that is the point to add a `USER-ACTIONS.md` item
 asking where the repo lives or for a fresh clone.
 
@@ -450,8 +451,13 @@ a view written by the flow: one row per URL and outcome, with `RUN_ID`, `LOCALE`
 `OUTCOME_SCOPE` (`url` or `section`), `OUTCOME` and `OUTCOME_DETAIL`. `selected` and `not selected by
 section ranking` are the section's eligible pool; the other outcomes say why the rest dropped out.
 Always filter on `LOCALE`, which cuts the scan by an order of magnitude (about 12 GB against 180–220 GB
-for the same two-month window with `RESOLVED_URL`), and dry-run first. Outcome bookkeeping has changed
+for the same two-month window with `RESOLVED_URL`), and on `DATE(CREATED_AT)`, the underlying table's
+day partition, which prunes through the view (one en_US day ≈ 0.3 GB), and dry-run first. Outcome bookkeeping has changed
 over time, so check that an outcome exists across your whole window before trending a rate built on it.
+
+**`blocked by bad image embed` can drop a whole publisher silently.** The en_US ranker needs a CLIP
+embedding of the main image, fetched through the Pocket image CDN. A publisher host refusing that fetch
+leaves its articles intact in `zyte_cache` yet never selectable.
 
 ### Experiment enrolment
 
