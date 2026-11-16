@@ -126,6 +126,13 @@ The registry-centric core (do these first, in order):
      `showDivider={false}` while the widget has no items of its own above the
      footer; a blank scaffold is exactly that case. See "Context menu" in
      notes.md.
+   - If the spec names a partner, render the shared `<WidgetMenuPoweredBy>`
+     directly before `<WidgetMenuFooter>`, after any other items of the
+     widget's own, and drop `showDivider={false}`. Use the script's URL
+     constant, `POWERED_BY_{PARTNER}` user action and
+     `newtab-{css-class}-menu-powered-by-{partner}` string, as Horoscopes and
+     Travel do. Do not hand-roll the `panel-item` or its `OPEN_LINK`. See
+     "Powered by partner link" in notes.md.
    - Render its own `<article className="{css} widget col-4 ${widgetSize}-widget">`
      root. Do **not** add a per-widget Nova gate; see "Nova gating is
      container-level, NOT per-widget" in notes.md.
@@ -201,7 +208,10 @@ The supporting files (each widget touches these):
     test file, started from `Horoscopes.test.jsx` in the same directory, the
     model widget test. Import `WrapWithProvider` from `test/jest/test-utils.jsx`
     (no local provider wrapper). The "Tests go in Jest" section of notes.md
-    says what it has to cover.
+    says what it has to cover. Horoscopes has a partner, so keep its two
+    Powered by cases (menu order, and the click opening the URL and recording
+    the event) only if the spec names one, renamed to the new partner;
+    otherwise delete them.
 12. `test/jest/content-src/components/Widgets/WidgetsRegistry.test.jsx` — three
     edits: append the new id to the hardcoded expected-order arrays in the
     `getWidgetOrder` and `resolveWidgetOrder` cases (registry order; several

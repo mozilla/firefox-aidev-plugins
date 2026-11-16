@@ -340,6 +340,40 @@ the Hide pref + `widgets_enabled` telemetry, and opens the Learn more link with
 `where: "tab"`. `onLearnMore` is optional and fires only the extra `learn_more`
 `widgets_user_event` — do NOT dispatch `OPEN_LINK` yourself.
 
+### Powered by partner link
+
+A widget whose content comes from a partner (Crossword and Particle,
+Horoscopes and Yahoo, Travel and Kayak) carries a "Powered by" item in its
+menu. `WidgetMenuPoweredBy` renders it, opens the URL in a new tab and records
+the user action with `source: "context_menu"`. Horoscopes and Travel have no
+other items, so it is the first child of the `panel-list`; Crossword puts it
+after its own items. Either way it sits directly before the footer, which then
+keeps its divider:
+
+```jsx
+const USER_ACTION_TYPES = {
+  // ...
+  POWERED_BY_YAHOO: "powered_by_yahoo",
+};
+
+const YAHOO_URL = "https://www.yahoo.com/";
+
+<WidgetMenuPoweredBy
+  dispatch={dispatch}
+  url={YAHOO_URL}
+  l10nId="newtab-horoscopes-menu-powered-by-yahoo"
+  recordUserAction={recordUserAction}
+  userAction={USER_ACTION_TYPES.POWERED_BY_YAHOO}
+  onClick={handleInteraction}
+/>
+<WidgetMenuFooter ... />
+```
+
+The string's comment names the partner as a brand name that should not be
+translated, as the three existing `newtab-*-menu-powered-by-*` messages do.
+The user action needs no `metrics.yaml` change; `user_action` is a free string
+on the shared `widgets_user_event`.
+
 ## Telemetry
 
 `useWidgetTelemetry({ dispatch, widget: ENTRY, widgetSize })` returns:
