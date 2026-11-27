@@ -1,6 +1,7 @@
 *                              @mozilla/ai4dev
 
 # Code owners for specific plugins
+/plugins/build-system/         @sylvestre
 /plugins/captchadetection/     @tomrittervg
 /plugins/figma/                @rocketsroger
 /plugins/gecko/                @alastor0325
