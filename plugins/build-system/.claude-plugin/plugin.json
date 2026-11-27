@@ -1,0 +1,5 @@
+{
+  "name": "build-system",
+  "description": "Skills for Firefox build system and CI toolchain work",
+  "version": "0.1.0"
+}

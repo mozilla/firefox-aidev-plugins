@@ -6,6 +6,10 @@
   },
   "plugins": [
     {
+      "name": "build-system",
+      "source": "./plugins/build-system"
+    },
+    {
       "name": "captchadetection",
       "source": "./plugins/captchadetection"
     },
