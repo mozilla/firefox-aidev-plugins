@@ -163,8 +163,11 @@ def main():
     pushes = {}
     for i, spec in enumerate(args.pushes):
         name, _, push = spec.rpartition("=")
+        name = name or f"push{i}"
+        if name in pushes:
+            p.error(f"duplicate push name: {name}")
         rev, rows = collect(push, name_re)
-        pushes[name or f"push{i}"] = {"revision": rev, "rows": rows}
+        pushes[name] = {"revision": rev, "rows": rows}
 
     if args.json:
         json.dump(pushes, sys.stdout, indent=2)
@@ -197,7 +200,9 @@ def main():
         return [
             r
             for r in rows
-            if r["label"] == label and (r.get("hit_rate") or 0) >= args.min_hit_rate
+            if r["label"] == label
+            and r.get("hit_rate") is not None
+            and r["hit_rate"] >= args.min_hit_rate
         ]
 
     ref_name = next(iter(pushes))

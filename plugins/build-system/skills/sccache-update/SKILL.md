@@ -46,11 +46,12 @@ Look for changes to what is hashed: they change cache keys, so every build
 misses until the cache refills. Also look for changes to the storage backends
 (GCS, HTTP, DNS, auth), which affect the time of each hit.
 
-To know beforehand whether a version will start with an empty cache, compare
+To check for a cache-namespace change, compare
 `CACHE_VERSION` in `src/compiler/compiler.rs` between the tags:
-`git grep -h 'const CACHE_VERSION' <tag> -- src`. Releases with the same
-value share cache entries. The second `CACHE_VERSION` belongs to the
-preprocessor cache (direct mode), which Firefox CI doesn't use.
+`git grep -h 'const CACHE_VERSION' <tag> -- src`. A changed value invalidates
+the compiler cache, but an unchanged value does not guarantee cache hits:
+changes to hashed inputs can still produce new keys. The second `CACHE_VERSION`
+belongs to the preprocessor cache (direct mode), which Firefox CI doesn't use.
 
 Push the patched revision and its parent with **identical** task selections.
 `mach try compare` is fzf-interactive only, so push twice by hand:
@@ -209,6 +210,6 @@ mozilla/sccache:
    fork's URL and `revision:` to that SHA. Commit it as
    `Bug NNNNNNN - [try only] ...` and push with the same task selection as the
    other runs. Never land that commit.
-4. If the version string is unchanged, the build shares the cache keys of
-   NEW, so it hits NEW's cache straight away. Compare it with NEW, both on a
-   full cache.
+4. An unchanged version string does not guarantee that the patched build
+   shares NEW's cache keys. Check hashes and misses, warm any new keys, and
+   compare it with NEW only once both builds run on a full cache.
